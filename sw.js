@@ -1,4 +1,4 @@
-const CACHE='price-hunter-v043';
+const CACHE='price-hunter-v044';
 const OWN=['./','./index.html','./core.js','./screenshot.js','./priceguard.js','./cx-setup.js','./market-config.js','./marketsearch.js','./catalogguard.js','./checkoutguard.js','./app.js','./market-ui.js','./manifest.webmanifest','./assets/icon.svg'];
 self.addEventListener('install',evt=>evt.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(OWN)).then(()=>self.skipWaiting())));
 self.addEventListener('activate',evt=>evt.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));
