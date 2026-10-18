@@ -9,9 +9,15 @@
 </style>
 <style>
 .scan-grid{align-items:start}.drop-target{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;border:2px dashed #41705f;background:linear-gradient(135deg,#142e35,#101d30);min-height:142px;border-radius:14px;text-align:center;padding:17px;cursor:pointer;margin:12px 0 9px;transition:background .15s,border-color .15s}.drop-target:hover,.drop-target.dragging{border-color:#66e6bd;background:#173f41}.drop-target strong{color:#e9fff8}.drop-target small{color:#aec5d8;font-size:12px}.drop-icon{font-size:29px}#scanFile{font-size:12px;min-height:40px}.scan-grid .image-preview{height:auto;max-height:320px;object-fit:contain}.scan-grid .card+.card{margin-top:0}.quick-card{margin-top:16px}.quick-options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px 18px;margin-bottom:8px}.price-breakdown{border-radius:12px;background:#091525;border:1px solid #30445f;padding:10px 12px;font-size:13px;color:#c1d2e9;margin-bottom:12px}.price-breakdown>div{display:flex;justify-content:space-between;gap:8px;padding:3px 0}.price-breakdown strong{color:#fff}.quick-results{margin:11px 0}.quick-banner{display:flex;align-items:center;justify-content:space-between;gap:15px;border:1px solid #4baf89;background:linear-gradient(110deg,#193b3b,#142d3b);border-radius:15px;padding:17px}.quick-banner small{color:#a8c5d9}.quick-banner .money{font-size:clamp(20px,3vw,29px);font-weight:900;color:#64deb2}.quick-banner .money.loss{color:#ff909d}.quick-banner .sub{font-size:12px;color:#b2cadd}.quick-kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:12px}.quick-kpis .metric{padding:12px}.quick-kpis .metric b{display:block;font-size:19px;margin-top:4px}.quick-kpis .metric small{color:#92b3d5;font-size:11px}.price-bars{padding:12px 0;margin:12px 0;border-top:1px solid var(--border);border-bottom:1px solid var(--border)}.price-row{display:grid;grid-template-columns:minmax(94px,150px) 1fr minmax(85px,110px);gap:10px;align-items:center;margin:8px 0;color:#bdd0e8;font-size:12px}.price-row>strong{text-align:right;color:white}.bar-track{height:10px;background:#273247;border-radius:99px;overflow:hidden}.bar-track>i{height:100%;display:block;border-radius:99px}.quick-foot{font-size:13px;line-height:1.8;color:#b5c5db}.quick-foot strong{color:#e5fff2}.mini-note{background:#122a36;border-left:3px solid #59ba9b;padding:8px 12px;color:#bcd5e8;font-size:12px;border-radius:6px;margin-top:12px}@media(max-width:780px){.quick-options{grid-template-columns:1fr 1fr;gap:0 9px}.quick-options .field label{font-size:11px}.quick-options select{font-size:12px}.quick-kpis{gap:6px}.quick-kpis .metric{padding:9px}.quick-kpis .metric b{font-size:14px}.quick-banner{align-items:flex-start;flex-direction:column}.price-row{grid-template-columns:94px 1fr 75px;gap:5px;font-size:11px}}@media(max-width:430px){.quick-options{grid-template-columns:1fr}.quick-kpis{grid-template-columns:1fr 1fr}.price-row{grid-template-columns:88px 1fr 72px}}
+
+/* Gallery and camera are independent mobile input sources. */
+.photo-source-actions{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin:10px 0 12px}
+.photo-source-actions .btn{min-width:0;text-align:center;cursor:pointer;user-select:none}
+input[type=file][hidden]{display:none!important}
+@media(max-width:380px){.photo-source-actions{grid-template-columns:1fr}}
 </style>
 </head><body>
-<header><div class="brandIcon" aria-hidden="true">🎯</div><div class="brand"><strong>Price Hunter</strong><small>SCAN · COMPARE · DECIDE</small></div><span class="version">v0.2.0 · 무료</span></header>
+<header><div class="brandIcon" aria-hidden="true">🎯</div><div class="brand"><strong>Price Hunter</strong><small>SCAN · COMPARE · DECIDE</small></div><span class="version">v0.3.1 · 무료</span></header>
 <main class="wrap"><div class="hero"><div><h1>가격표를 찍고, <span class="good">기회를 확인하세요.</span></h1><p>사진 인식 → 중고 매물 검색 → 실제 시세 검증 → 순이익 계산</p></div><span class="tag">API 요금 0원 · 계정 불필요</span></div>
 <nav class="tabs" aria-label="주요 기능"><button class="tab active" data-tab="scan">① 촬영·인식</button><button class="tab" data-tab="search">② 시장 검색</button><button class="tab" data-tab="records">③ 시세 검증</button><button class="tab" data-tab="calc">④ 수익 계산</button><button class="tab" data-tab="history">⑤ 이력</button></nav>
 <section class="page active" id="scan">
@@ -19,8 +25,13 @@
   <article class="card">
    <div class="count">STEP 01 / ONE PHOTO</div><h2>📸 스크린샷 한 장으로 바로 분석</h2>
    <p class="helper">쇼핑몰 캡처·마트 가격표·포장 사진을 한 곳에서 불러옵니다. <b>상품명과 가격이 함께 보이는 이미지</b>가 가장 정확합니다.</p>
-   <label class="drop-target" id="dropTarget" for="scanFile"><span class="drop-icon">📸</span><strong>사진 찍기 · 스크린샷 선택</strong><small>파일을 끌어놓거나 이미지 복사 후 Ctrl+V도 가능합니다</small></label>
-   <input type="file" id="scanFile" accept="image/*" capture="environment" aria-label="상품 사진 또는 스크린샷 한 장 선택">
+   <div class="drop-target" id="dropTarget"><span class="drop-icon">🖼️</span><strong>사진 · 스크린샷 한 장으로 분석</strong><small>갤러리·파일 선택 또는 카메라 촬영을 선택하세요. PC에서는 이미지 드롭·Ctrl+V도 지원합니다.</small></div>
+   <div class="photo-source-actions" role="group" aria-label="이미지 가져오기">
+    <label class="btn main" for="scanFile">🖼️ 갤러리 · 파일 선택</label>
+    <label class="btn" for="cameraFile">📷 사진 촬영</label>
+   </div>
+   <input type="file" id="scanFile" accept="image/*" hidden aria-label="갤러리 또는 파일에서 이미지 선택">
+   <input type="file" id="cameraFile" accept="image/*" capture="environment" hidden aria-label="후면 카메라로 촬영">
    <img id="scanPreview" class="image-preview" alt="선택한 이미지 미리보기">
    <div class="actions"><button id="ocrBtn" class="btn main">🔍 이미지 다시 분석</button><button id="barcodeBtn" class="btn">▦ 바코드</button></div>
    <div id="ocrStatus" class="status" role="status" aria-live="polite">이미지 선택 시 자동으로 무료 OCR을 실행합니다. 첫 사용은 모델 다운로드가 필요합니다.</div>
