@@ -69,3 +69,52 @@ function analyze(text){const lines=safeLines(text),prices=collectPrices(lines);c
 }
 return {analyze,modelTokens,safeLines,collectPrices};
 });
+
+
+/* v0.3.0 Korean storefront OCR correction, price/points separation */
+(function(S){
+'use strict';
+const old=S.analyze, clean=x=>String(x||'').normalize('NFKC').trim();
+const excluded=/적립|포인트|마일리지|할부|개월|택배비|배송비|리뷰|평점|구매수/i;
+const conditional=/로그인|쿠폰|멤버|혜택가|회원가|카드\s*할인|캐시백/i;
+const original=/정가|정상가|할인\s*전|출고가|소비자가/i;
+function fixTitle(t){let s=clean(t).replace(/[「」『』<>{}|]/g,' ').replace(/\s+/g,' ').trim();
+if(/갤럭시/.test(s)&&/폴드/.test(s))s=s.replace(/갤럭시\s*[7Zz]\s*폴드\s*([1-9])/,'갤럭시 Z 폴드$1').replace(/폴드([1-9])5[6Gg]\b/,'폴드$1 5G').replace(/\b(128|256|512)\s*(?:68|6B|G8)\b/gi,'$1GB').replace(/자급제\s*(?:Fs|5|s|f)\s*$/i,'자급제');
+return s;}
+function money(line){const a=[],r=/(\d{1,3}(?:[,，.]\d{3}){1,3}|\d{4,9}|\d{1,3}(?=\s*(?:만원|천원)))\s*(만원|천원|원|₩|￦)?/g;let m;
+while((m=r.exec(line))){const amount=Number(m[1].replace(/[,，.]/g,''))*(m[2]==='만원'?10000:m[2]==='천원'?1000:1);if(amount<1000||amount>2e8)continue;
+if(!m[2]&&!/[,，.]/.test(m[1])&&!/(?:판매|가격|특가|할인|\d{1,2}\s*%)/.test(line))continue;
+if(!m[2]&&/[가-힣a-z]/i.test(line)&&!/(?:판매|가격|특가|할인|\d{1,2}\s*%)/.test(line))continue;
+if(/^[PpGg]/.test(line.slice(r.lastIndex,r.lastIndex+4)))continue;
+a.push({value:amount,raw:m[0],uncertain:!m[2]});}return a;}
+function analyze(text){const base=old(text),lines=String(text||'').split(/\r?\n/).map(clean).filter(Boolean);
+let name=base.name,model=base.model;
+const t=lines.filter(l=>/(?:삼성전자.*갤럭시|LG전자.*(?:NANO|TV)|폴라로이드|Sony.*A7|Canon.*EOS)/i.test(l)&&!excluded.test(l)).sort((a,b)=>b.length-a.length)[0];
+if(t){name=fixTitle(t);const next=lines[lines.indexOf(t)+1]||'';if(/^(?:자급제|스탠드형|벽걸이형|\d+GB)/i.test(next)&&!excluded.test(next)&&!money(next).length)name=fixTitle(name+' '+next);}else if(name)name=fixTitle(name);
+if(/^(?:FOLD|FLIP|GALAXY|IPHONE)\d+$/i.test(model)||/^\d+(?:GB|G8|TB|CM)$/i.test(model))model='';
+const found=[];
+for(let i=0;i<lines.length;i++)for(const hit of money(lines[i])){
+const line=lines[i],prev=lines[i-1]||'',near=line+' '+(!/\d/.test(prev)?prev:'');let type='main',score=40;
+if(excluded.test(near)){type='excluded';score=-300;}else if(conditional.test(near)){type='conditional';score=-100;}else if(original.test(near)){type='original';score=-80;}
+else{if(/\b\d{1,2}\s*%/.test(line))score+=110;if(/할인|판매|특가/.test(line))score+=70;if(hit.raw.includes(','))score+=25;if(!hit.uncertain)score+=12;}
+found.push({...hit,type,score,row:i,context:line});}
+for(const a of found)if(a.type==='main'){const reduced=found.find(b=>b.type==='main'&&b.row>a.row&&b.row<=a.row+4&&b.value<a.value&&/\d{1,2}\s*%|할인|판매/.test(b.context));if(reduced){a.type='original';a.score=-50;}}
+const main=found.filter(x=>x.type==='main').sort((a,b)=>b.score-a.score||a.row-b.row)[0];
+const before=found.filter(x=>x.type==='original'&&(!main||x.value>=main.value)).sort((a,b)=>a.row-b.row)[0];
+const benefit=found.filter(x=>x.type==='conditional');let price=main?.value??null;
+if(price===null&&base.price&&!found.some(x=>x.type==='excluded'&&x.value===base.price))price=base.price;
+const warnings=[...new Set(base.warnings||[])];
+if(!model&&name)warnings.push('제조사 모델 코드(SKU)가 보이지 않아 상품명으로 검색합니다. 정확한 모델을 확인하세요.');
+if(name&&t&&fixTitle(t)!==clean(t))warnings.push('OCR 오탈자를 보정한 상품명 후보입니다. 원본과 대조하세요.');
+if(!price)warnings.push('표시 판매가를 확인할 수 없습니다. 포인트·쿠폰 등은 판매가에서 제외했습니다.');
+const titleScore=name?(t?90:40):0,priceScore=main?.score??(price?15:-300);
+const priceConfidence=!price?'none':main?.uncertain?'medium':'high';
+return {...base,name,model,price,originalPrice:before?.value??base.originalPrice??null,conditionalPrices:[...new Set(benefit.map(x=>x.value))],prices:found,confidence:(!price||!name)?'low':priceConfidence==='high'?'high':'medium',titleConfidence:name?'high':'none',priceConfidence,warnings,_titleScore:titleScore,_priceScore:priceScore};}
+S.analyze=analyze;
+S.combine=function(inputs){const arr=(Array.isArray(inputs)?inputs:[inputs]).map(x=>typeof x==='string'?analyze(x):x).filter(Boolean);
+if(!arr.length)return analyze('');const title=arr.filter(x=>x.name).sort((a,b)=>b._titleScore-a._titleScore)[0]||arr[0];const sale=arr.filter(x=>x.price).sort((a,b)=>b._priceScore-a._priceScore)[0]||arr[0];
+const all=arr.flatMap(x=>x.prices||[]),before=all.filter(x=>x.type==='original'&&(!sale.price||x.value>=sale.price))[0];
+const mismatch=arr.some(x=>x.price&&sale.price&&x.price!==sale.price&&x._priceScore>=sale._priceScore-12);
+return {...title,price:sale.price,originalPrice:before?.value??sale.originalPrice,conditionalPrices:[...new Set(all.filter(x=>x.type==='conditional').map(x=>x.value))],prices:all,priceConfidence:mismatch?'low':sale.priceConfidence,confidence:!sale.price||mismatch?'low':title.confidence,warnings:[...new Set([...title.warnings,...sale.warnings,mismatch?'다중 OCR 가격 후보 불일치 - 확인 필요':''].filter(Boolean))]};};
+})(globalThis.PriceHunterScreenshot);
+
