@@ -13,7 +13,7 @@ const cases=[
  ['camera change routed through OCR',()=>assert.match(app,/receiveFile\(file,'카메라로 촬영한 이미지'\)/)],
  ['both inputs can reselect the same photo',()=>{assert.match(app,/\$\('scanFile'\)\.addEventListener\('click'/);assert.match(app,/\$\('cameraFile'\)\.addEventListener\('click'/)}],
  ['both inputs can be used by OCR retry',()=>assert.match(app,/currentPastedFile\|\|\$\('scanFile'\)\.files\?\.\[0\]\|\|\$\('cameraFile'\)/)],
- ['new service worker key',()=>assert.match(sw,/price-hunter-v031/)],
+ ['new service worker key',()=>assert.match(sw,/price-hunter-v032/)],
  ['existing saved data key preserved',()=>assert.match(app,/price-hunter-0\.1\.0/)]
 ];
 let failures=0;for(const [name,fn] of cases){try{fn();console.log('PASS',name)}catch(e){failures++;console.error('FAIL',name,e.message)}}
