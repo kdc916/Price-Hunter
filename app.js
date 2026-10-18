@@ -112,7 +112,7 @@ async function ocrImage(file,token){if(ocrRunning){setStatus('ocrStatus','현재
   };
   await recognize(image,'1차 전체 화면');
   let merged=S.combine(texts);
-  const sufficient=()=>Boolean(merged.name&&merged.price&&merged.priceConfidence==='high'&&(merged.model||merged.name.length>=8));
+  const sufficient=()=>Boolean(merged.name&&window.PriceHunterCheckoutGuard?.autoPurchase(merged).price&&(merged.model||merged.name.length>=8));
   // Always retry missing or ambiguous product/price using a distinct image representation.
   if(token===scanToken&&!sufficient()){
    await recognize(enhanceOCR(image),'2차 고대비 문자', '6');
@@ -132,7 +132,7 @@ async function ocrImage(file,token){if(ocrRunning){setStatus('ocrStatus','현재
   $('ocrText').value=primary?.t||'';
   if(!texts.length){setStatus('ocrStatus','텍스트를 감지하지 못했습니다. 원본 사진의 글자 크기를 확인하세요.','error');return;}
   applyScanResult(merged);
-  const verified=merged.priceConfidence==='high'?'가격 후보 추출':'금액 재확인 필요';
+  const verified=window.PriceHunterCheckoutGuard?.autoPurchase(merged).price?'구매가 자동 입력':'금액 재확인 필요';
   setStatus('ocrStatus',`인식 완료 · ${merged.name?'상품명 후보 추출':'상품명 미확인'} · ${verified} · ${texts.length}회 OCR 분석`,merged.price?'ok':'error');
  }catch(e){if(token===scanToken)setStatus('ocrStatus',`자동 OCR 실패: ${e.message}. 원문 또는 상품명을 직접 수정할 수 있습니다.`,'error');console.error(e);
  }finally{if(worker)try{await worker.terminate();}catch{}ocrRunning=false;$('ocrBtn').disabled=false;
@@ -142,12 +142,13 @@ $('ocrBtn').addEventListener('click',()=>{const file=selectedFile();if(!file){se
 function parseOCR(){const input=$('ocrText').value;if(!input.trim()){setStatus('ocrStatus','인식 원문이나 사진을 먼저 입력하세요.','error');return;}
  applyScanResult(S.analyze(input));}
 function applyScanResult(result){lastScan=result;
- $('productName').value=result.name||'';$('modelCode').value=result.model||'';$('purchasePrice').value=(result.priceConfidence==='high'&&result.price)?result.price:'';
+ const chosen=window.PriceHunterCheckoutGuard?.autoPurchase(result)||{price:null,reason:'가격 확인 필요'};
+ $('productName').value=result.name||'';$('modelCode').value=result.model||'';$('purchasePrice').value=chosen.price?String(chosen.price):'';
  const confidenceLabel={high:'상품명·가격 후보 추출',medium:'일부 확인 필요',low:'확인 필요'}[result.confidence];
- $('scanConfidence').className='info '+(result.confidence==='high'&&result.price?'':'warning');
- $('scanConfidence').textContent=`${confidenceLabel} · ${result.name?'상품명 후보 표시됨':'상품명 미확인'} · ${result.price?'표시 판매가 '+C.won(result.price):'가격 미확인'}`;
+ $('scanConfidence').className='info '+(chosen.price?'':'warning');
+ $('scanConfidence').textContent=chosen.price?`구매가 자동 입력 완료 · ${C.won(chosen.price)} · ${chosen.reason}`:`${confidenceLabel||'확인 필요'} · ${result.name?'상품명 후보 표시됨':'상품명 미확인'} · ${result.price?'표시 판매가 '+C.won(result.price)+' (확인 필요)':'가격 미확인'}`;
  const rows=[];if(result.originalPrice)rows.push(`<div><span>할인 전 표시가</span><del>${C.won(result.originalPrice)}</del></div>`);
- if(result.price)rows.push(`<div><span>표시 판매가 ${result.priceConfidence!=='high'?'(직접 확인 후 입력)':''}</span><strong class="good">${C.won(result.price)}</strong></div>`);
+ if(result.price)rows.push(`<div><span>표시 판매가 ${chosen.price?'(구매가 자동 입력)':'(검증 필요)'}</span><strong class="good">${C.won(result.price)}</strong></div>`);
  for(const x of [...new Set(result.conditionalPrices)])rows.push(`<div><span>로그인·쿠폰 등 조건부</span><span>${C.won(x)} (미적용)</span></div>`);
  const excludes=[...new Map((result.prices||[]).filter(x=>x.type==='excluded').map(x=>[x.value,x])).values()].slice(0,5);
  for(const x of excludes)rows.push(`<div><span>적립·포인트·할인액 등 (제외)</span><del>${C.won(x.value)}</del></div>`);
