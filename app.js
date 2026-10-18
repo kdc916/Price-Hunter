@@ -33,25 +33,30 @@ if(!name){$('searchLinks').innerHTML='<div class="empty" style="grid-column:1/-1
 const includeNew=$('includeNew');includeNew.addEventListener('change',renderLinks);
 $('goAddRecord').addEventListener('click',()=>{if(productName()&&!$('recordTitle').value)$('recordTitle').value=productName();tab('records');});
 $('parsePaste').addEventListener('click',()=>{const raw=$('pasteText').value.trim();if(!raw){setStatus('parseStatus','복사한 검색 문장을 먼저 입력하세요.','error');return;}const price=C.parsePastedPrice(raw);if(!price){setStatus('parseStatus','가격 후보를 찾지 못했습니다. 수동 입력하세요.','error');return;}const title=raw.split('\n').map(x=>x.trim()).find(x=>x.length>3&&!/^\d/.test(x))||productName();$('recordPrice').value=price;$('recordTitle').value=title.replace(/\d{1,3}(?:,\d{3})+\s*원/g,'').trim().slice(0,140);setStatus('parseStatus',`가격 후보 ${C.won(price)} 추출됨. 직접 확인 후 시세 검증 단계에서 등록하세요.`,'ok');});
-function selectedFile(){return currentPastedFile||$('scanFile').files?.[0]||null;}
+function selectedFile(){return currentPastedFile||$('scanFile').files?.[0]||$('cameraFile').files?.[0]||null;}
 let currentPastedFile=null, currentPreviewUrl=null, ocrRunning=false, lastScan=null, scanToken=0;
+function isImageFile(file){return Boolean(file&&(file.type?.startsWith('image/')||/\.(?:png|jpe?g|webp|gif|bmp|heic|heif|avif)$/i.test(file.name||'')));}
 function previewFile(file){if(currentPreviewUrl)URL.revokeObjectURL(currentPreviewUrl);currentPreviewUrl=null;
- if(file && file.type.startsWith('image/')){currentPreviewUrl=URL.createObjectURL(file);$('scanPreview').src=currentPreviewUrl;$('scanPreview').style.display='block';}
+ if(isImageFile(file)){currentPreviewUrl=URL.createObjectURL(file);$('scanPreview').src=currentPreviewUrl;$('scanPreview').style.display='block';}
  else{$('scanPreview').removeAttribute('src');$('scanPreview').style.display='none';}}
 function receiveFile(file,source='이미지'){
- if(!file||!file.type.startsWith('image/')){setStatus('ocrStatus','PNG·JPG·WebP 등 이미지 파일을 선택하세요.','error');return;}
+ if(!isImageFile(file)){setStatus('ocrStatus','PNG·JPG·WebP 등 이미지 파일을 선택하세요.','error');return;}
  if(file.size>22*1024*1024){setStatus('ocrStatus','이미지가 22MB를 넘습니다. 크기를 줄여 다시 시도하세요.','error');return;}
  currentPastedFile=file;previewFile(file);lastScan=null;$('ocrText').value='';$('productName').value='';$('modelCode').value='';$('purchasePrice').value='';renderQuick();
  const token=++scanToken;setStatus('ocrStatus',`${source} 입력됨. 상품명과 가격을 자동 분석합니다…`);
  ocrImage(file,token);
 }
-$('scanFile').addEventListener('change',()=>{const file=$('scanFile').files?.[0];if(file)receiveFile(file,'선택한 이미지');});
+// Re-selecting the same photo must still trigger the change event.
+$('scanFile').addEventListener('click',()=>{$('scanFile').value='';});
+$('cameraFile').addEventListener('click',()=>{$('cameraFile').value='';});
+$('scanFile').addEventListener('change',()=>{const file=$('scanFile').files?.[0];if(file)receiveFile(file,'갤러리·파일에서 선택한 이미지');});
+$('cameraFile').addEventListener('change',()=>{const file=$('cameraFile').files?.[0];if(file)receiveFile(file,'카메라로 촬영한 이미지');});
 const drop=$('dropTarget');
 ['dragenter','dragover'].forEach(e=>drop.addEventListener(e,ev=>{ev.preventDefault();drop.classList.add('dragging');}));
 ['dragleave','drop'].forEach(e=>drop.addEventListener(e,ev=>{ev.preventDefault();drop.classList.remove('dragging');}));
-drop.addEventListener('drop',ev=>{const file=[...ev.dataTransfer.files].find(f=>f.type.startsWith('image/'));if(file)receiveFile(file,'드롭한 이미지');});
+drop.addEventListener('drop',ev=>{const file=[...ev.dataTransfer.files].find(isImageFile);if(file)receiveFile(file,'드롭한 이미지');});
 document.addEventListener('paste',ev=>{const active=document.activeElement;if(active&&['INPUT','TEXTAREA'].includes(active.tagName))return;
- const file=[...(ev.clipboardData?.files||[])].find(f=>f.type.startsWith('image/'));if(file){ev.preventDefault();tab('scan');receiveFile(file,'클립보드 이미지');}});
+ const file=[...(ev.clipboardData?.files||[])].find(isImageFile);if(file){ev.preventDefault();tab('scan');receiveFile(file,'클립보드 이미지');}});
 let tesseractLoading=null;
 async function scriptLoader(){if(window.Tesseract)return;
  if(tesseractLoading)return tesseractLoading;
