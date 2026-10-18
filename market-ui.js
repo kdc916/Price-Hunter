@@ -1,4 +1,4 @@
-/* Price Hunter v0.4.2 — one-click market search with CX handoff and honest fallback.
+/* Price Hunter v0.4.2 — in-page automatic search + one-screen live results. No forced tab.
    Data source: user-configured free Google Programmable Search Standard Element. */
 (function(){
 'use strict';
@@ -6,12 +6,13 @@ const M=window.PriceHunterMarketSearch;
 const $=id=>document.getElementById(id);
 const CXKEY='price-hunter-market-cx';
 const parseCX=window.PriceHunterCX?.parseCX||((v)=>String(v||'').trim());
-// The site's published engine takes priority over obsolete visitor settings.
+// A site owner's published search engine must take priority over visitors' old local settings.
 const configCX=parseCX(window.PRICE_HUNTER_MARKET_CX);
-let cx=configCX||parseCX(localStorage.getItem(CXKEY));
+function savedCX(){try{return parseCX(localStorage.getItem(CXKEY));}catch{return '';}}
+let cx=configCX||savedCX();
 let enginePromise=null, currentProduct=null, runId=0;
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-function status(message,warning=false){const el=$('marketSearchStatus');el.textContent=message;el.className='info'+(warning?' warning':'');}
+function status(message,warning=false){const el=$('marketSearchStatus');el.textContent=message;el.className='info'+(warning?' warning':'');window.PriceHunterInstantDashboard?.status(message,warning);}
 function cfgValid(s){return Boolean(window.PriceHunterCX?.validCX(s));}
 function showSources(results){const counts=new Map(M.markets.map(x=>[x.name,0]));for(const r of results)counts.set(r.market,(counts.get(r.market)||0)+1);
  const host=$('marketSourceSummary');host.replaceChildren();for(const [market,count] of counts){const pill=document.createElement('span');pill.className='pill';pill.textContent=`${market} ${count}건`;host.append(pill);}}
@@ -34,8 +35,10 @@ function resultCard(r){const card=document.createElement('article');card.classNa
 function MONEY(n){return Number(n).toLocaleString('ko-KR')+'원';}
 function resultsReady(name,query,promos,results){
  if(!currentProduct || name!=='priceHunterMarket')return;
+ if(String(query||'').trim()!==M.queryFor(currentProduct))return; // ignore old product callbacks
  const normalized=M.normalizeResults(results,currentProduct),host=$('marketSearchResults');host.replaceChildren();showSources(normalized);
  for(const r of normalized){host.appendChild(resultCard(r));}
+ window.PriceHunterInstantDashboard?.updateResults(normalized);
  if(!normalized.length){const box=document.createElement('div');box.className='empty';box.textContent='검색 결과에서 해당 중고 마켓의 공개 게시물을 찾지 못했습니다. 매물이 없다는 뜻은 아닙니다. 아래 Google 원본 결과를 함께 확인하세요.';host.appendChild(box);}
  status(`Google 공개 검색 결과 ${normalized.length}건 분류 완료 · 검색 색인 시점의 정보이므로 가격·매물 상태 검증 필요`,false);
  // undefined return: Google Standard Search Element still renders its native results and advertisements.
@@ -66,16 +69,15 @@ async function run(product){
  const query=M.queryFor(currentProduct);
  $('marketSearchResults').innerHTML='<div class="empty">통합 검색 준비 중… 중고 플랫폼을 따로 선택하지 않아도 됩니다.</div>';
  $('marketSourceSummary').replaceChildren();
+ window.PriceHunterInstantDashboard?.updateResults([]);
  if(!cx){
-  // No CX: official combined marketplace Google search, never fabricate in-app listings.
-  const url=M.collectiveLink(currentProduct);
-  const tab=window.open(url,'_blank','noopener,noreferrer');
-  status(tab===null?'브라우저가 새 탭 열기를 제한했을 수 있습니다. 아래 구글 통합 검색 링크를 눌러 주세요.':'공식 Google 통합 검색을 새 탭으로 열었습니다. 앱 안에서 결과를 표시하려면 사이트 관리자 CX 1회 연결이 필요합니다.',true);
-  $('marketSearchResults').innerHTML='<div class="empty">검색 엔진 ID 미설정 · 현재 중고 시세를 가져온 것처럼 표시하지 않습니다. <a href="'+esc(url)+'" target="_blank" rel="noopener noreferrer">중고 마켓 통합 검색 바로 열기 ↗</a></div>';
+  // Never auto-open Google. Static GitHub Pages cannot read cross-origin market pages.
+  status('실시간 통합 검색 미연결 · 공개 Google 검색 엔진(CX) 최초 설정 필요. 저장된 검증 시세는 위 결과에서 자동 분석됩니다.',true);
+  $('marketSearchResults').innerHTML='<div class="empty">검색 엔진이 연결되지 않아 실제 중고 매물을 표시할 수 없습니다. 원하시면 위의 Google 원본 링크를 직접 열어 확인할 수 있습니다. 확인 전에는 임의의 중고 시세·수익을 생성하지 않습니다.</div>';
   return;
  }
  const task=++runId;
- status(`검색 중: ${query} · Google에 등록된 공개 중고 매물 조회 중…`);
+ status(`검색 중: ${query} · Google 공개 매물 색인을 현재 화면에서 조회합니다…`);
  try{await engine();if(task!==runId)return;
   const el=window.google?.search?.cse?.element?.getElement('priceHunterMarket');if(!el?.execute)throw Error('검색 위젯이 초기화되지 않았습니다.');
   el.execute(query);
@@ -87,12 +89,12 @@ $('runMarketSearch').addEventListener('click',()=>run());
 $('marketEngineId').value=cx;
 $('saveMarketEngine').addEventListener('click',()=>{
  const input=parseCX($('marketEngineId').value);if(!cfgValid(input)){status('Google 검색 엔진 ID(CX) 또는 Google 제공 임베드 코드를 넣어 주세요. 비밀번호나 API 키는 입력하지 마세요.',true);return;}
- localStorage.setItem(CXKEY,input);
+ try{localStorage.setItem(CXKEY,input);}catch{status('이 브라우저는 검색 엔진 설정 저장이 제한됩니다. 현재 세션에서만 연결됩니다.',true);}
  if(cx&&cx!==input){alert('검색 엔진 ID가 변경되었습니다. 새 검색 엔진을 적용하기 위해 페이지를 다시 불러옵니다.');location.reload();return;}
  cx=input;status('무료 검색 엔진 ID를 저장했습니다. 통합 검색 버튼을 눌러주세요.');
  $('marketEngineSettings').open=false;
 });
-if(cx){status('무료 Google 통합 검색 준비 완료. 모델 확정 시 모든 중고 마켓을 자동 검색합니다.');}
-else{status('앱 내 검색용 Google CX가 아직 발급되지 않았습니다. 지금은 버튼 한 번으로 여러 중고 마켓을 묶은 공식 Google 검색을 열 수 있습니다.',true);}
+if(cx){status('앱 내 공개 검색 준비 완료. 상품 인식 후 결과 화면에서 자동으로 조회합니다.');}
+else{status('Google 무료 검색엔진 CX가 미설정입니다. 외부 구글 탭을 자동으로 열지 않으며 저장된 검증 시세만 분석합니다.',true);}
 window.PriceHunterAutoMarket={run};
 })();
