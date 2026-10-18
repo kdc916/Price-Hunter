@@ -113,20 +113,22 @@ async function ocrImage(file,token){if(ocrRunning){setStatus('ocrStatus','현재
    const response=await worker.recognize(canvas);const text=(response.data?.text||'').trim();
    if(text)texts.push(text);
   };
-  await recognize(image,'1차 전체 화면');
+  // Tesseract uses a layout-aware sequence: full scene, then isolated text zones.
+  // On wide shop cards, running contrast on the entire product photograph is
+  // usually worse than the native-pixel price band (e.g. 1,190,000원).
+  await recognize(image,'1차 전체 화면', '3');
   let merged=S.combine(texts);
-  const sufficient=()=>Boolean(merged.name&&(window.PriceHunterMerchantGuard?merged.autoFillPrice:window.PriceHunterCheckoutGuard?.autoPurchase(merged).price)&&(merged.model||merged.name.length>=8));
-  // Always retry missing or ambiguous product/price using a distinct image representation.
-  if(token===scanToken&&!sufficient()){
-   await recognize(enhanceOCR(image),'2차 고대비 문자', '6');
+  const plan=window.PriceHunterOCRRegions?.regions(image.width,image.height)||[];
+  const sufficient=()=>Boolean(merged.name&&window.PriceHunterOCRRegions?.isGoodCandidate(merged)&&(merged.model||merged.name.length>=8));
+  for(const [index,area] of plan.entries()){
+   // Always check one price zone: a crossed-out original price may look like a unique price.
+   if(token!==scanToken||(index>0&&sufficient()))break;
+   const regionCanvas=window.PriceHunterOCRRegions.crop(image,area);
+   await recognize(regionCanvas,`추가 정밀 인식 · ${area.name}`,String(area.psm));
    merged=S.combine(texts);
   }
   if(token===scanToken&&!sufficient()){
-   await recognize(cropTopOCR(image),'3차 상품명·가격 집중', '3');
-   merged=S.combine(texts);
-  }
-  if(token===scanToken&&!sufficient()){
-   await recognize(focusPriceOCR(image),'4차 가격·최저가 영역 확대', '6');
+   await recognize(enhanceOCR(image),'마지막 고대비 검사','11');
    merged=S.combine(texts);
   }
   if(token!==scanToken)return;
@@ -135,7 +137,7 @@ async function ocrImage(file,token){if(ocrRunning){setStatus('ocrStatus','현재
   $('ocrText').value=primary?.t||'';
   if(!texts.length){setStatus('ocrStatus','텍스트를 감지하지 못했습니다. 원본 사진의 글자 크기를 확인하세요.','error');return;}
   applyScanResult(merged);
-  const verified=(window.PriceHunterMerchantGuard?merged.autoFillPrice:window.PriceHunterCheckoutGuard?.autoPurchase(merged).price)?'구매가 자동 입력':'금액 재확인 필요';
+  const verified=(window.PriceHunterOCRRegions?.isGoodCandidate(merged))?'구매가 자동 입력':'금액 재확인 필요';
   setStatus('ocrStatus',`인식 완료 · ${merged.name?'상품명 후보 추출':'상품명 미확인'} · ${verified} · ${texts.length}회 OCR 분석`,merged.price?'ok':'error');
  }catch(e){if(token===scanToken)setStatus('ocrStatus',`자동 OCR 실패: ${e.message}. 원문 또는 상품명을 직접 수정할 수 있습니다.`,'error');console.error(e);
  }finally{if(worker)try{await worker.terminate();}catch{}ocrRunning=false;$('ocrBtn').disabled=false;
