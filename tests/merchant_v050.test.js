@@ -58,6 +58,6 @@ const index=fs.readFileSync(path.join(__dirname,'..','index.html'),'utf8');const
 check('merchant guard loaded before app',()=>assert.match(index,/merchantguard\.js"><\/script><script src="ocr-regions\.js"><\/script><script src="instant-engine\.js"><\/script><script src="app\.js/));
 check('version updated',()=>assert.match(index,/v0\.6\.0/));
 check('autofill backed by price evidence',()=>assert.match(app,/result\?\.autoFillPrice/));
-check('PWA cache invalidated',()=>assert.match(sw,/price-hunter-v060/));
+check('PWA cache invalidated',()=>assert.match(sw,/price-hunter-v070/));
 let failure=0;for(const c of cases){try{c.run();console.log('PASS '+c.name)}catch(e){failure++;console.error('FAIL '+c.name+' — '+e.message)}}
 console.log('Merchant v0.5.0: '+(cases.length-failure)+'/'+cases.length);if(failure)process.exitCode=1;
