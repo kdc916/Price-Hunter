@@ -46,3 +46,10 @@
 - 원본 화면에는 제조사 SKU가 없으므로 미확인 상태. 원가/판매가는 사용자 첨부 화면 기반 예시이고 현재 실시간 가격이 아님.
 - 검증: 72개 단위 테스트(24 core + 18 기존 screenshot + 30 추가 screenshot 패턴), 재현 문자열 기반. 실제 OCR 실기기·GitHub Pages 공개 배포는 별도 확인 필요.
 - 저장 데이터 기존 localStorage key 유지. 무료 API 및 플랫폼별 무료 구글 검색 링크 계속 이용.
+
+## v0.3.1 모바일 사진 입력 분리 (2026-10-18)
+- 원인: 단일 `scanFile`에 `capture="environment"`가 들어가 모바일에서 파일 선택 시 후면 카메라 강제 실행.
+- 해결: `scanFile`은 capture 없는 갤러리·파일 input, `cameraFile`은 capture 있는 카메라 input으로 분리, 화면에 명시적 진입 버튼 추가.
+- 드롭/클립보드/두 input 모두 `receiveFile()` OCR 경로로 합류. 같은 사진 재선택, MIME 없는 모바일 사진 파일명 확장자 처리.
+- ServiceWorker 캐시 키 `price-hunter-v031` 업데이트, `price-hunter-0.1.0` 로컬 데이터는 보존.
+- 검증: 기존 OCR·가격 엔진 72건, 모바일 입력 구조 10건 PASS. 브라우저 자동화는 실행 환경에서 파일/localhost 페이지 접근이 차단돼 실기기 검증 필요.
