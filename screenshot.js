@@ -110,6 +110,7 @@ if(!price)warnings.push('표시 판매가를 확인할 수 없습니다. 포인�
 const titleScore=name?(t?90:40):0,priceScore=main?.score??(price?15:-300);
 const priceConfidence=!price?'none':main?.uncertain?'medium':'high';
 return {...base,name,model,price,originalPrice:before?.value??base.originalPrice??null,conditionalPrices:[...new Set(benefit.map(x=>x.value))],prices:found,confidence:(!price||!name)?'low':priceConfidence==='high'?'high':'medium',titleConfidence:name?'high':'none',priceConfidence,warnings,_titleScore:titleScore,_priceScore:priceScore};}
+const baseTokens=S.modelTokens; S.modelTokens=s=>baseTokens(s).filter(x=>!/^(?:FOLD|FLIP|GALAXY|IPHONE)\d+$/i.test(x));
 S.analyze=analyze;
 S.combine=function(inputs){const arr=(Array.isArray(inputs)?inputs:[inputs]).map(x=>typeof x==='string'?analyze(x):x).filter(Boolean);
 if(!arr.length)return analyze('');const title=arr.filter(x=>x.name).sort((a,b)=>b._titleScore-a._titleScore)[0]||arr[0];const sale=arr.filter(x=>x.price).sort((a,b)=>b._priceScore-a._priceScore)[0]||arr[0];
