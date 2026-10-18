@@ -1,0 +1,8 @@
+worker/public/
+worker/node_modules/
+worker/.dev.vars*
+worker/.env*
+worker/wrangler.jsonc
+worker/.wrangler/
+_cafe_smoke.html
+*.png
