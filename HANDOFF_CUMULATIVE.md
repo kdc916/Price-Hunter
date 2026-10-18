@@ -125,3 +125,13 @@ https://github.com/kdc916/Price-Hunter (`main`, GitHub Pages root 배포 예정)
 - 연구 결과: `docs/KOREAN_COMMERCE_PRICE_RESEARCH.md`. PWA cache `price-hunter-v050`, 기존 브라우저 가격 기록 보존.
 - **검증 상태:** 모든 자바스크립트/Node 회귀 테스트 통과. 실제 브라우저 UI 실행은 Playwright에 Chromium 실행 파일이 없어 완료하지 못했으며, 모바일 이미지 OCR·배포 Pages 실동작은 미검증입니다. Google PSE CX가 아직 설정되지 않았다면 앱 내부 자동 중고 검색도 미연결입니다.
 - 외부 사이트의 현재 판매가를 직접 조회·수집하거나 신규 유료 API에 접속한 패치는 아닙니다. 사용자가 촬영한 **쇼핑몰 이미지의 가격 해석 정확도** 개선입니다.
+
+## v0.5.1 — Adaptive Region OCR / 한국어 OCR 엔진 연구
+- 실제 OCR 엔진은 여전히 **Tesseract.js 6**입니다. PaddleOCR PP-OCRv5 Korean은 후속 이중 엔진 후보이며, 이번 패치에서 설치·가동됐다고 주장하지 않습니다.
+- 수평형 쇼핑 카드·PC 2열·세로형 모바일에 따라 가격과 상품명 영역을 분리하여 확대 OCR을 수행합니다. 새 모듈 `ocr-regions.js`는 브라우저 캔버스 내에서만 처리합니다.
+- 기본 OCR에서 가격을 찾았더라도 **최초 가격 영역 한 번은 반드시 추가 확인**해 취소선 정가를 유일한 판매가로 잘못 믿는 위험을 낮춥니다.
+- 할인율 표기와 두 가격의 계산 비율이 일치하는 경우에만 높은 가격을 할인 전 가격 후보로 분리합니다. 한 줄에 두 개의 가격이 섞여 있고 구분 근거가 부족하면 자동 입력을 보류합니다.
+- 실제 로보락 스크린샷(675×250) 한 장의 Tesseract 5 CLI 실험에서 전체 OCR은 판매가 뒤 `원`을 누락했지만, 가격 영역 크롭 OCR은 `1,190,000원`을 인식했습니다. **이는 전체 인식률이나 모바일 Tesseract.js 정확도 보장이 아닙니다.**
+- 공식 PaddleOCR Browser SDK `@paddleocr/paddleocr-js`(Apache-2.0) 및 한국어 인식모델 `korean_PP-OCRv5_mobile_rec`(약 14MB)을 조사했습니다. 실제 브라우저 설치에는 검출 모델·ONNX/WASM 리소스, 모델 아카이브 호환성 및 모바일 벤치마크가 필요하므로 검증 전 강제 교체하지 않습니다.
+- 테스트 `tests/ocr_regions_v051.test.js` 24건, 전체 로컬 회귀 342건 PASS. 저장 데이터 및 기존 기능 유지, PWA 캐시 v051.
+- 참고: https://github.com/PaddlePaddle/PaddleOCR/blob/main/docs/version3.x/inference_deployment/cross_platform/browser.en.md
