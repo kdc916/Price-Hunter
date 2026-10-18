@@ -149,3 +149,13 @@ https://github.com/kdc916/Price-Hunter (`main`, GitHub Pages root 배포 예정)
 - `tests/instant_v060.test.js`: 다중 시세, 불일치 모델, 비검증 매물, 수수료, 손익, 원스크린 UI, 새 탭 자동 실행 금지 검사.
 - 검증: Node 회귀 및 JavaScript 문법 검사; Playwright Chromium에서 인라인 실행(실제 OCR 모델 요청 없이 문장 입력) 후 `835000` 자동 구매가, 대시보드 금액, 강제 외부 탭 0개, 모바일 가로 스크롤 없음, 브라우저 JS 에러 0개.
 - **미완료**: Google 공개 CX 발급/연결 및 실데이터 자동 조회, 스마트폰 사진 OCR 정확도 측정. 검색 결과 색인 가격은 실거래가로 자동 사용하지 않음. 기본 미연결 상황에서는 ROI를 계산하지 않음. 데이터 사실성 우선.
+
+## v0.7.0 — 네이버 카페 이중 공유 (2026-10-19)
+- 사용자 결정: 운영자 공식 등록(회원 제보 → 관리자 검토/승인 → 공식 계정 게시)과 회원 직접 등록(본인 OAuth 동의·버튼 클릭 → 본인 계정 게시) 모두 구현.
+- 신규 정적 모듈 `cafe-compose.js`, `cafe-ui.js`; 인식 완료 후 상품·판매가 초안 자동 연결. 위치/시각/가격/재고/조건/미개봉 여부 확인 필수. 공개 전 사용자가 선택.
+- 신규 `worker/src/index.mjs` Cloudflare Workers + D1 + Naver OAuth. 만료시간·state 확인, HTTPOnly 쿠키, CSRF Origin 체크, 토큰 AES-GCM 암호화, user ID 기반 운영자 권한. 사진은 JPEG 재인코딩 후 선택 업로드(원본 EXIF 제거, 화면 속 개인정보는 사용자 확인).
+- `worker/migrations/0001_init.sql`에 사용자/세션/OAuth 상태/제보/검수 기록 DB. 중복·속도·일일 제보 제한. 오류 시 중복 우려가 있으므로 자동 재게시 금지.
+- 카페 공식 API는 네이버 로그인/카페 글쓰기 권한, 카페 일반 게시판 ID 필요. 비공개/회원등급/차단 설정 영향을 받음. 상품판매 게시판 API 등록 불가.
+- Worker 전용 정적 배포는 `scripts/prepare-worker-assets.mjs` + `worker/wrangler.example.jsonc`. `worker/README.md`에 수동 OAuth/Worker 계정 생성·키 설정 순서 기록.
+- **인증과 API 키 미발급으로 실제 카페 게시 성공은 미검증**. GitHub Pages에서는 초안 제작만 지원; 관리자 공개 시크릿 미연결 상태를 게시 완료라고 표시하지 말 것.
+- 기존 인식/검색/수익 분석 엔진 및 사용자 로컬 이력 키 유지. `price-hunter-v070` 캐시 적용.
