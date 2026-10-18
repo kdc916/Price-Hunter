@@ -84,6 +84,18 @@ function cropTopOCR(source){
  const ctx=canvas.getContext('2d');ctx.fillStyle='white';ctx.fillRect(0,0,canvas.width,canvas.height);
  ctx.drawImage(source,0,0,source.width,height,0,0,canvas.width,canvas.height);return canvas;
 }
+// Dedicated upper-right scan for ecommerce desktop screenshots. Huge product photos
+// often drown out comparatively tiny main selling price in full-page OCR.
+function focusPriceOCR(source){
+ const sx=Math.floor(source.width*.40),sy=Math.floor(source.height*.09);
+ const sw=source.width-sx,sh=Math.max(1,Math.floor(source.height*.72));
+ const mul=Math.min(2.6,2700/Math.max(sw,sh));
+ const canvas=document.createElement('canvas');canvas.width=Math.max(1,Math.round(sw*mul));canvas.height=Math.max(1,Math.round(sh*mul));
+ const ctx=canvas.getContext('2d');if(!ctx)throw new Error('가격 영역 이미지 생성 실패');
+ ctx.fillStyle='#fff';ctx.fillRect(0,0,canvas.width,canvas.height);ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
+ ctx.drawImage(source,sx,sy,sw,Math.min(sh,source.height-sy),0,0,canvas.width,canvas.height);
+ return canvas;
+}
 let lastOcrDebug=[];
 async function ocrImage(file,token){if(ocrRunning){setStatus('ocrStatus','현재 사진 분석 후 새 사진을 다시 분석합니다.');return;}
  if(!file)return;ocrRunning=true;$('ocrBtn').disabled=true;let worker;
@@ -100,7 +112,7 @@ async function ocrImage(file,token){if(ocrRunning){setStatus('ocrStatus','현재
   };
   await recognize(image,'1차 전체 화면');
   let merged=S.combine(texts);
-  const sufficient=()=>merged.name&&merged.price&&merged.titleConfidence==='high'&&merged.priceConfidence==='high';
+  const sufficient=()=>Boolean(merged.name&&merged.price&&merged.priceConfidence==='high'&&(merged.model||merged.name.length>=8));
   // Always retry missing or ambiguous product/price using a distinct image representation.
   if(token===scanToken&&!sufficient()){
    await recognize(enhanceOCR(image),'2차 고대비 문자', '6');
@@ -108,6 +120,10 @@ async function ocrImage(file,token){if(ocrRunning){setStatus('ocrStatus','현재
   }
   if(token===scanToken&&!sufficient()){
    await recognize(cropTopOCR(image),'3차 상품명·가격 집중', '3');
+   merged=S.combine(texts);
+  }
+  if(token===scanToken&&!sufficient()){
+   await recognize(focusPriceOCR(image),'4차 가격·최저가 영역 확대', '6');
    merged=S.combine(texts);
   }
   if(token!==scanToken)return;
@@ -135,8 +151,17 @@ function applyScanResult(result){lastScan=result;
  for(const x of [...new Set(result.conditionalPrices)])rows.push(`<div><span>로그인·쿠폰 등 조건부</span><span>${C.won(x)} (미적용)</span></div>`);
  const excludes=[...new Map((result.prices||[]).filter(x=>x.type==='excluded').map(x=>[x.value,x])).values()].slice(0,5);
  for(const x of excludes)rows.push(`<div><span>적립·포인트·할인액 등 (제외)</span><del>${C.won(x.value)}</del></div>`);
- if(result.priceConfidence==='low'&&!result.price)rows.push('<div><span>⚠️ 가격 후보 충돌 / 원화 단위 미확인 — 자동 입력 보류</span></div>');
+ if(result.priceConfidence!=='high'&&!result.price)rows.push('<div><span>⚠️ 기본 판매가 미확인 · 적립/조건부 금액은 구매가에 자동 적용하지 않습니다.</span></div>');
+ // Candidates are not payment prices until a human checks against the screenshot.
+ const rejected=new Set((result.prices||[]).filter(x=>x.type==='conditional'||x.type==='excluded'||x.type==='original').map(x=>x.value));
+ const pending=[...new Set((result.prices||[]).filter(x=>x.type==='main'&&!rejected.has(x.value)).map(x=>x.value))].filter(v=>v!==result.price).slice(0,4);
+ for(const v of pending)rows.push(`<div><span>기본 판매가 후보 · 직접 확인</span><button type="button" class="btn price-accept" data-price="${v}">${C.won(v)} 확인 후 적용</button></div>`);
  $('scanPriceBreakdown').innerHTML=rows.join('')||'<span>상품 가격을 확인하지 못했습니다.</span>';
+ $('scanPriceBreakdown').querySelectorAll('.price-accept').forEach(button=>button.addEventListener('click',()=>{
+  const candidate=Number(button.dataset.price);if(!Number.isSafeInteger(candidate))return;
+  if(!confirm(`이미지 속 일반 판매가가 ${C.won(candidate)}인지 확인하셨나요? 조건부 혜택가·포인트를 기본 구매가로 사용하면 안 됩니다.`))return;
+  $('purchasePrice').value=String(candidate);renderQuick();setStatus('ocrStatus',`가격 확인 후 구매가 ${C.won(candidate)} 입력 완료`,'ok');
+ }));
  $('ocrCandidates').textContent=result.warnings.join(' ')||'상품명·가격이 자동 추출되었습니다. 실물 SKU와 최종 결제 금액을 확인하세요.';
  renderQuick();renderQuickLinks();
 }
