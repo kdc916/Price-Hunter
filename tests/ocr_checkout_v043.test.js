@@ -21,10 +21,10 @@ t('conflicting true selling prices not automatic',()=>assert.equal(S.combine(['�
 t('Sony A7V regression',()=>assert.equal(S.analyze('소니 A7V ILCE-7M5\n3,533,050원\n11% 3,109,090원\n68,181원 적립').price,3109090));
 t('dedicated price crop',()=>assert.match(app,/function focusPriceOCR\(source\)/));
 t('fourth OCR pass',()=>assert.match(app,/recognize\(focusPriceOCR\(image\)/));
-t('auto apply requires high confidence',()=>assert.match(app,/result\.priceConfidence==='high'&&result\.price/));
+t('auto apply uses evidence policy instead of high-only gate',()=>assert.match(app,/PriceHunterCheckoutGuard\?\.autoPurchase\(result\)/));
 t('conditional values rejected from manual options',()=>assert.match(app,/type==='conditional'\|\|x\.type==='excluded'/));
 t('explicit confirm before manual assignment',()=>assert.ok(app.includes('if(!confirm(')));
 t('manual assignment updates quick calculation',()=>assert.match(app,/\$\('purchasePrice'\)\.value=String\(candidate\);renderQuick\(\)/));
-t('optimized OCR stopping rule',()=>assert.match(app,/merged\.priceConfidence==='high'&&\(merged\.model/));
+t('optimized OCR stopping rule',()=>assert.match(app,/PriceHunterCheckoutGuard\?\.autoPurchase\(merged\)/));
 let bad=0;for(const [name,fn] of cases){try{fn();console.log('PASS',name)}catch(e){bad++;console.error('FAIL',name,e.message)}}
 console.log((cases.length-bad)+'/'+cases.length+' checkout OCR regression');if(bad)process.exitCode=1;
