@@ -11,14 +11,14 @@ const cases=[
 ()=>assert.equal(CX.parseCX('<script src="https://evil.example/?cx=abcd1234efgh5678"></script>'),''),
 ()=>assert.equal(CX.parseCX('my google account password'),''),
 ()=>assert.equal(CX.parseCX(''),''),
-()=>assert.ok(ui.includes('configCX||parseCX(localStorage.getItem(CXKEY))')),
-()=>assert.ok(ui.includes('window.open(url')),
+()=>assert.ok(ui.includes('configCX||savedCX()')),
+()=>assert.ok(!ui.includes('window.open(url')),
 ()=>assert.ok(ui.includes('M.collectiveLink(currentProduct)')),
 ()=>assert.ok(ui.includes('marketSearchResults')),
 ()=>assert.ok(html.includes('cx-setup.js')),
 ()=>assert.ok(html.includes('maxLength="1500"')===false), // HTML uses lowercase maxlength
 ()=>assert.ok(html.includes('maxlength="1500"')),
-()=>assert.ok(sw.includes('price-hunter-v050')),
+()=>assert.ok(sw.includes('price-hunter-v060')),
 ()=>assert.ok(sw.includes('cx-setup.js')),
 ()=>assert.ok(M.collectiveLink({model:'ILCE-7M5',name:'Sony A7V'}).includes('google.com/search'))
 ];let bad=0;cases.forEach((t,i)=>{try{t();console.log('PASS',i+1)}catch(e){bad++;console.error('FAIL',i+1,e.message)}});console.log(`${cases.length-bad}/${cases.length} search setup tests`);if(bad)process.exitCode=1;
