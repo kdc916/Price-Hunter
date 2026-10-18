@@ -49,11 +49,12 @@ function classifyLine(line,row,prev,prev2){
   const h=hits[i],left=line.slice(i?hits[i-1].end:0,h.start),right=line.slice(h.end,i+1<hits.length?hits[i+1].start:line.length);
   // Bind a qualifier to the nearest amount. It may appear on either side: "포인트 68,181원" or "68,181원 적립".
   const leftTail=left.slice(-40),rightHead=right.slice(0,28);
+  const plainDiscount=/(?:^|\s)할인\s*[:：]?\s*$/.test(leftTail);
   const ownLeft=/((?:최대|오늘|네이버페이|맴버십|멤버십)\s*)?(?:적립(?:금)?|포인트|마일리지|리워드|캐시백|캐쉬백|페이백|할부|배송비|택배비|수수료|할인\s*(?:금액|액|혜택)|쿠폰\s*(?:할인|금액))\s*(?:최대|약|금액|:|：|\-|은|이)?\s*$/i.test(leftTail);
   const ownRight=(i+1===hits.length)&&/^\s*(?:[Pp](?![a-z])|점\b|적립(?:금)?|포인트|마일리지|리워드|캐시백|할부|배송비|택배비|할인\s*금액)/i.test(rightHead);
   const leftKind=contextKind(leftTail),rightKind=contextKind(rightHead);
   let type='',score=35,reason='일반 금액 후보';
-  if(ownLeft||ownRight||(hits.length===1&&(leftKind==='excluded'||rightKind==='excluded'))){type='excluded';reason='적립·포인트·할인액·부대비용';}
+  if(plainDiscount||ownLeft||ownRight||(hits.length===1&&(leftKind==='excluded'||rightKind==='excluded'))){type='excluded';reason='적립·포인트·할인액·부대비용';}
   else if(conditional.test(leftTail)||conditional.test(rightHead)){type='conditional';reason='쿠폰·로그인 등 조건부 혜택가';}
   else if(original.test(leftTail)||original.test(rightHead)){type='original';reason='할인 전 가격';}
   // Other lines can qualify the amount only when the current line has no price-label text.
