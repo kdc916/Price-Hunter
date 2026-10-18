@@ -12,7 +12,7 @@ const cases=[
   ['both photo sources have change listeners and OCR path',()=>{assert.match(app,/\$\('scanFile'\)\.addEventListener\('change'/);assert.match(app,/\$\('cameraFile'\)\.addEventListener\('change'/);assert.match(app,/receiveFile\(file,'카메라로 촬영한 이미지'\)/);assert.match(app,/receiveFile\(file,'갤러리·파일에서 선택한 이미지'\)/);} ],
   ['selectedFile supports camera gallery and paste',()=>assert.match(app,/return currentPastedFile\|\|\$\('scanFile'\)\.files\?\.\[0\]\|\|\$\('cameraFile'\)\.files\?\.\[0\]/)],
   ['same image can be picked twice',()=>{assert.match(app,/\$\('scanFile'\)\.addEventListener\('click',/);assert.match(app,/\$\('cameraFile'\)\.addEventListener\('click',/);} ],
-  ['PWA new cache key',()=>assert.match(sw,/price-hunter-v060/)],
+  ['PWA new cache key',()=>assert.match(sw,/price-hunter-v070/)],
   ['no old capture on gallery',()=>assert.doesNotMatch(html,/id="scanFile"[^>]+capture/)],
   ['preserves localStorage identifier',()=>assert.match(app,/price-hunter-0\.1\.0/)]
 ];
