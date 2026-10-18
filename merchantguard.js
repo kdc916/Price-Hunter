@@ -77,7 +77,25 @@
   }
   return out;
  }
- function decision(evidence){const prices=(evidence||[]).slice(),warnings=[],byValue=new Map();
+ function decision(evidence){const prices=(evidence||[]).map(p=>({...p})),warnings=[],byValue=new Map();
+  // An arithmetic match between a percent discount and two prices can identify
+  // the crossed-out original. Never infer this from price magnitude alone.
+  for(const salePrice of prices){
+   if(salePrice.type!=='main')continue;
+   const match=String(salePrice.context||'').match(/(?:^|\D)(\d{1,2})\s*%/);
+   if(!match)continue;
+   const stated=Number(match[1]);
+   if(stated<3||stated>90)continue;
+   for(const old of prices){
+    if(old.type!=='main'||old.value<=salePrice.value||old.score>=175)continue;
+    if(old.context===salePrice.context)continue; // same row with 2 prices is ambiguous
+    const calculated=100*(1-salePrice.value/old.value);
+    if(Math.abs(calculated-stated)<=2){
+     old.type='original';old.score=0;old.reason='할인율과 가격 비율이 일치하는 할인 전 가격 추정';
+    }
+   }
+  }
+  
   for(const p of prices){if(!byValue.has(p.value))byValue.set(p.value,[]);byValue.get(p.value).push(p);}
   const mains=[];
   for(const [value,rows] of byValue){const untrusted=rows.filter(x=>x.type!=='main'),good=rows.filter(x=>x.type==='main');if(!good.length)continue;
