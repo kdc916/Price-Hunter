@@ -55,9 +55,9 @@ check('상품코드 numeric ignored',()=>assert.equal(p('MSI 노트북\n상품�
 check('purchase autofill prohibited if same amount conditional in other pass',()=>{const r=S.combine(['DJI Pocket 4\n판매가 835,000원','DJI Pocket 4\n회원 혜택가 835,000원']);assert.equal(r.autoFillPrice,null)});
 check('merchant recognition not inferred from product brand',()=>assert.equal(p('삼성전자 DDR5-5600 16GB\n판매가 349,690원').store,null));
 const index=fs.readFileSync(path.join(__dirname,'..','index.html'),'utf8');const app=fs.readFileSync(path.join(__dirname,'..','app.js'),'utf8');const sw=fs.readFileSync(path.join(__dirname,'..','sw.js'),'utf8');
-check('merchant guard loaded before app',()=>assert.match(index,/merchantguard\.js"><\/script><script src="app\.js/));
-check('version updated',()=>assert.match(index,/v0\.5\.0/));
+check('merchant guard loaded before app',()=>assert.match(index,/merchantguard\.js"><\/script><script src="ocr-regions\.js"><\/script><script src="app\.js/));
+check('version updated',()=>assert.match(index,/v0\.5\.1/));
 check('autofill backed by price evidence',()=>assert.match(app,/result\?\.autoFillPrice/));
-check('PWA cache invalidated',()=>assert.match(sw,/price-hunter-v050/));
+check('PWA cache invalidated',()=>assert.match(sw,/price-hunter-v051/));
 let failure=0;for(const c of cases){try{c.run();console.log('PASS '+c.name)}catch(e){failure++;console.error('FAIL '+c.name+' — '+e.message)}}
 console.log('Merchant v0.5.0: '+(cases.length-failure)+'/'+cases.length);if(failure)process.exitCode=1;
