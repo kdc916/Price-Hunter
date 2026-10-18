@@ -82,3 +82,11 @@ https://github.com/kdc916/Price-Hunter (`main`, GitHub Pages root 배포 예정)
 - 검색에 노출되지 않는 당근 지역/비공개 글, 최신 매물 데이터, 실거래완료 가격을 보장하지 않음. 검색 노출 호가는 통계로 자동 기록하지 않음.
 - 기존 사용자 localStorage `price-hunter-0.1.0` 유지. PWA cache `price-hunter-v040`.
 - 테스트: 신규 21개, 기존 엔진 회귀 테스트 유지. 실제 Google PSE CX 엔드투엔드 테스트 및 GitHub Pages 검증은 CX 최초 설정 후 수행 필요.
+
+## v0.4.1 (2026-10-18) — 가격 및 제품 일치 검증
+- 6개 쇼핑몰 스크린샷에서 직접 읽은 문자 전사본을 기준으로 판매가와 정상가, 조건부 회원가, 적립·배송·할인액, 주문합계를 분리하는 `catalogguard.js` 도입.
+- 쇼핑몰 내부 상품코드 P0000EQM/122726680/5676616040 등을 제조사 모델 코드나 원화 금액으로 오인하지 않도록 처리.
+- 제조사가 다른 삼성전자 DDR5와 ESSENCORE KLEVV DDR5는 같은 DDR5-5600 16GB라도 제품 매칭 불일치 처리. 렌즈 화각·조리개, 메모리 CL/규격/용량 검사.
+- 기존 OCR/수익계산/통합검색 흐름은 유지, 광고·가격 후보를 실거래로 임의 확정하지 않음.
+- 새 테스트 `tests/catalogguard_v041.test.js`, PWA 캐시 `price-hunter-v041`.
+- 실기기 OCR 인식률과 무료 Google CX 연동은 이 테스트 환경에서 검증되지 않았으며 추후 별도 확인.
