@@ -1,0 +1,13 @@
+{
+  "$schema": "https://raw.githubusercontent.com/cloudflare/workers-sdk/main/packages/wrangler/config-schema.json",
+  "name": "price-hunter-community",
+  "main": "src/index.mjs",
+  "compatibility_date": "2026-10-18",
+  "assets": { "directory": "./public", "binding": "ASSETS" },
+  "d1_databases": [{"binding":"DB","database_name":"price-hunter-community","database_id":"PUT_YOUR_D1_DATABASE_ID_HERE"}],
+  "vars": {
+    "NAVER_CAFE_ID": "PUT_CAFE_CLUB_ID_HERE",
+    "NAVER_OFFICIAL_MENU_ID": "PUT_OFFICIAL_NORMAL_BOARD_ID_HERE",
+    "NAVER_MEMBER_MENU_ID": "PUT_MEMBER_NORMAL_BOARD_ID_HERE"
+  }
+}
