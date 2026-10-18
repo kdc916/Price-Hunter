@@ -1,4 +1,4 @@
-/* Price Hunter 0.2.0 — no paid APIs, no cross-site scraping. */
+/* Price Hunter 0.3.0 — no paid APIs, no cross-site scraping. */
 (function(){
 'use strict';
 const C=window.PriceHunterCore,S=window.PriceHunterScreenshot;const $=id=>document.getElementById(id);
@@ -33,7 +33,7 @@ if(!name){$('searchLinks').innerHTML='<div class="empty" style="grid-column:1/-1
 const includeNew=$('includeNew');includeNew.addEventListener('change',renderLinks);
 $('goAddRecord').addEventListener('click',()=>{if(productName()&&!$('recordTitle').value)$('recordTitle').value=productName();tab('records');});
 $('parsePaste').addEventListener('click',()=>{const raw=$('pasteText').value.trim();if(!raw){setStatus('parseStatus','복사한 검색 문장을 먼저 입력하세요.','error');return;}const price=C.parsePastedPrice(raw);if(!price){setStatus('parseStatus','가격 후보를 찾지 못했습니다. 수동 입력하세요.','error');return;}const title=raw.split('\n').map(x=>x.trim()).find(x=>x.length>3&&!/^\d/.test(x))||productName();$('recordPrice').value=price;$('recordTitle').value=title.replace(/\d{1,3}(?:,\d{3})+\s*원/g,'').trim().slice(0,140);setStatus('parseStatus',`가격 후보 ${C.won(price)} 추출됨. 직접 확인 후 시세 검증 단계에서 등록하세요.`,'ok');});
-function selectedFile(){return $('scanFile').files?.[0]||currentPastedFile||null;}
+function selectedFile(){return currentPastedFile||$('scanFile').files?.[0]||null;}
 let currentPastedFile=null, currentPreviewUrl=null, ocrRunning=false, lastScan=null, scanToken=0;
 function previewFile(file){if(currentPreviewUrl)URL.revokeObjectURL(currentPreviewUrl);currentPreviewUrl=null;
  if(file && file.type.startsWith('image/')){currentPreviewUrl=URL.createObjectURL(file);$('scanPreview').src=currentPreviewUrl;$('scanPreview').style.display='block';}
@@ -62,34 +62,56 @@ async function imageInputForOCR(file){let width,height,draw,dispose=()=>{};
  catch{const url=URL.createObjectURL(file);const img=new Image();try{await new Promise((res,rej)=>{img.onload=res;img.onerror=()=>rej(new Error('이 브라우저가 지원하지 않는 이미지 형식입니다. PNG/JPG로 변환하세요.'));img.src=url;});width=img.naturalWidth;height=img.naturalHeight;draw=(ctx,w,h)=>ctx.drawImage(img,0,0,w,h);}finally{URL.revokeObjectURL(url);}}
  if(!width||!height)throw new Error('이미지 해상도를 확인할 수 없습니다.');
  // Small shopping screenshots (e.g. 418x282) are enlarged before OCR.
- const longest=Math.max(width,height),scale=Math.min(3,Math.max(1,1200/longest)),bounded=Math.min(scale,2900/longest);
+ const longest=Math.max(width,height),scale=Math.min(3.5,Math.max(1,1850/longest)),bounded=Math.min(scale,2900/longest);
  const canvas=document.createElement('canvas');canvas.width=Math.max(1,Math.round(width*bounded));canvas.height=Math.max(1,Math.round(height*bounded));
  const ctx=canvas.getContext('2d',{willReadFrequently:true});if(!ctx)throw new Error('이미지 캔버스를 만들지 못했습니다.');
  ctx.fillStyle='#fff';ctx.fillRect(0,0,canvas.width,canvas.height);ctx.imageSmoothingQuality='high';draw(ctx,canvas.width,canvas.height);dispose();
  return canvas;
 }
-async function ocrImage(file,token){if(ocrRunning){setStatus('ocrStatus','이전 분석이 끝나는 즉시 새 사진을 분석합니다.');return;}
+/* v0.3 screenshot multi-pass */
+function enhanceOCR(img){
+ const c=document.createElement('canvas');c.width=img.width;c.height=img.height;
+ const ctx=c.getContext('2d',{willReadFrequently:true});ctx.drawImage(img,0,0);
+ const im=ctx.getImageData(0,0,c.width,c.height),d=im.data;
+ let corners=0;for(const [x,y] of [[0,0],[c.width-1,0],[0,c.height-1],[c.width-1,c.height-1]]){const i=(y*c.width+x)*4;corners+=(d[i]+d[i+1]+d[i+2])/3;}
+ const invert=corners/4<105;
+ for(let i=0;i<d.length;i+=4){let v=.299*d[i]+.587*d[i+1]+.114*d[i+2];if(invert)v=255-v;v=Math.max(0,Math.min(255,(v-143)*1.65+143));d[i]=d[i+1]=d[i+2]=v;d[i+3]=255;}
+ ctx.putImageData(im,0,0);return c;
+}
+function cropTopOCR(img){const c=document.createElement('canvas');c.width=img.width;c.height=Math.max(1,Math.floor(img.height*.78));
+const ctx=c.getContext('2d');ctx.fillStyle='white';ctx.fillRect(0,0,c.width,c.height);ctx.drawImage(img,0,0,img.width,c.height,0,0,c.width,c.height);return c;}
+async function ocrImage(file,token){
+ if(ocrRunning){setStatus('ocrStatus','현재 분석 후 새로운 사진을 자동으로 다시 분석합니다.');return;}
  if(!file)return;ocrRunning=true;$('ocrBtn').disabled=true;let worker;
- try{setStatus('ocrStatus','무료 한글·영문 인식 모델 준비 중… 첫 실행은 다운로드가 필요합니다.');await scriptLoader();
- worker=await window.Tesseract.createWorker(['kor','eng'],1,{logger:m=>{if(m.status==='recognizing text'&&token===scanToken)setStatus('ocrStatus',`글자 인식 ${Math.round((m.progress||0)*100)}%`);}});
- const img=await imageInputForOCR(file);setStatus('ocrStatus','상품명·모델코드·가격을 읽는 중…');
- let out=await worker.recognize(img);let text=(out.data?.text||'').trim();let analysis=S.analyze(text);
- // Retry a dense screen segmentation when the first pass misses key signals.
- if((!analysis.name||!analysis.price||!analysis.model)&&img.width>0){setStatus('ocrStatus','정밀 재인식 중… 다른 문자 분할 방식으로 확인합니다.');
-  await worker.setParameters({tessedit_pageseg_mode:'6'});out=await worker.recognize(img);const second=(out.data?.text||'').trim();const candidate=S.analyze(second);
-  const quality=x=>(x.name?3:0)+(x.model?4:0)+(x.price?4:0)+(x.confidence==='high'?2:0);
-  if(quality(candidate)>quality(analysis)){text=second;analysis=candidate;}}
- if(token!==scanToken)return;
- $('ocrText').value=text;parseOCR();
- if(!text)setStatus('ocrStatus','문자가 감지되지 않았습니다. 선명한 가격표를 찍거나 인식 원문을 입력하세요.','error');
- else setStatus('ocrStatus',`인식 완료 · ${analysis.model?'모델 코드 확인':'모델 코드 수동 확인 필요'} · 표시가 ${analysis.price?C.won(analysis.price):'미확인'} · 가격 후보 ${analysis.prices.length}개`,'ok');
- }catch(e){if(token===scanToken)setStatus('ocrStatus',`자동 OCR 실패: ${e.message}. 상품명·가격을 직접 입력할 수 있습니다.`,'error');console.error(e);
- }finally{if(worker)try{await worker.terminate();}catch{}ocrRunning=false;$('ocrBtn').disabled=false;
-  if(token!==scanToken&&selectedFile()){const nextToken=scanToken;setTimeout(()=>ocrImage(selectedFile(),nextToken),0);}}
+ try{
+  setStatus('ocrStatus','무료 한글·영문 OCR 준비 중…');
+  await scriptLoader();
+  worker=await window.Tesseract.createWorker(['kor','eng'],1,{logger:m=>{if(m.status==='recognizing text'&&token===scanToken)setStatus('ocrStatus','문자 인식 '+Math.round((m.progress||0)*100)+'%');}});
+  const img=await imageInputForOCR(file),texts=[];
+  const pass=async (canvas,label,psm)=>{
+   if(token!==scanToken)return;
+   setStatus('ocrStatus',label+' 분석 중…');
+   if(psm)await worker.setParameters({tessedit_pageseg_mode:psm});
+   const out=await worker.recognize(canvas),s=(out.data?.text||'').trim();
+   if(s)texts.push(s);
+  };
+  await pass(img,'1차 전체 화면');
+  let a=S.combine(texts);
+  const enough=()=>a.name&&a.price&&a.priceConfidence==='high'&&a.confidence==='high';
+  if(token===scanToken&&!enough()){await pass(enhanceOCR(img),'2차 고대비 문자','6');a=S.combine(texts);}
+  if(token===scanToken&&!enough()){await pass(cropTopOCR(img),'3차 상단 상품 정보','3');a=S.combine(texts);}
+  if(token!==scanToken)return;
+  $('ocrText').value=texts[0]||'';
+  if(!texts.length){setStatus('ocrStatus','OCR 텍스트가 감지되지 않았습니다. 선명한 원본 이미지를 사용하세요.','error');return;}
+  parseOCR(a);
+  setStatus('ocrStatus','인식 완료 · '+(a.name?'상품명 후보 추출':'상품명 미확인')+' · '+(a.price?C.won(a.price):'표시가 미확인')+' · '+texts.length+'회 OCR 분석',a.price?'ok':'error');
+ }catch(e){if(token===scanToken)setStatus('ocrStatus','무료 OCR 처리 실패: '+e.message+' / 원문 직접 수정 가능','error');console.error(e);}
+ finally{if(worker)try{await worker.terminate();}catch{}ocrRunning=false;$('ocrBtn').disabled=false;
+  if(token!==scanToken&&selectedFile()){const next=scanToken;setTimeout(()=>ocrImage(selectedFile(),next),0);}}
 }
 $('ocrBtn').addEventListener('click',()=>{const file=selectedFile();if(!file){setStatus('ocrStatus','이미지를 한 장 선택해 주세요.','error');return;}ocrImage(file,++scanToken);});
-function parseOCR(){const input=$('ocrText').value;if(!input.trim()){setStatus('ocrStatus','인식 원문이나 사진을 먼저 입력하세요.','error');return;}
- const result=S.analyze(input);lastScan=result;
+function parseOCR(override){const input=$('ocrText').value;if(!input.trim() && !override?.name){setStatus('ocrStatus','인식 원문이나 사진을 먼저 입력하세요.','error');return;}
+ const result=override&&Array.isArray(override.prices)?override:S.analyze(input);lastScan=result;
  $('productName').value=result.name||'';$('modelCode').value=result.model||'';$('purchasePrice').value=result.price??'';
  const confidenceLabel={high:'모델 코드 포함',medium:'상품명 후보 추출',low:'확인 필요'}[result.confidence];
  $('scanConfidence').className='info '+(result.confidence==='high'&&result.price?'':'warning');
