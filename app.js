@@ -117,13 +117,16 @@ async function ocrImage(file,token){
 $('ocrBtn').addEventListener('click',()=>{const file=selectedFile();if(!file){setStatus('ocrStatus','이미지를 한 장 선택해 주세요.','error');return;}ocrImage(file,++scanToken);});
 function parseOCR(override){const input=$('ocrText').value;if(!input.trim() && !override?.name){setStatus('ocrStatus','인식 원문이나 사진을 먼저 입력하세요.','error');return;}
  const result=override&&Array.isArray(override.prices)?override:S.analyze(input);lastScan=result;
- $('productName').value=result.name||'';$('modelCode').value=result.model||'';$('purchasePrice').value=result.price??'';
+ $('productName').value=result.name||'';$('modelCode').value=result.model||'';$('purchasePrice').value=(result.priceConfidence==='high'&&result.price)?result.price:'';
  const confidenceLabel={high:'모델 코드 포함',medium:'상품명 후보 추출',low:'확인 필요'}[result.confidence];
  $('scanConfidence').className='info '+(result.confidence==='high'&&result.price?'':'warning');
  $('scanConfidence').textContent=`${confidenceLabel} · ${result.name?'상품명 후보 표시됨':'상품명 미확인'} · ${result.price?'표시 판매가 '+C.won(result.price):'가격 미확인'}`;
  const rows=[];if(result.originalPrice)rows.push(`<div><span>할인 전 표시가</span><del>${C.won(result.originalPrice)}</del></div>`);
- if(result.price)rows.push(`<div><span>기본 표시 판매가</span><strong class="good">${C.won(result.price)}</strong></div>`);
+ if(result.price)rows.push(`<div><span>표시 판매가 ${result.priceConfidence!=='high'?'(직접 확인 후 입력)':''}</span><strong class="good">${C.won(result.price)}</strong></div>`);
  for(const x of [...new Set(result.conditionalPrices)])rows.push(`<div><span>로그인·쿠폰 등 조건부</span><span>${C.won(x)} (미적용)</span></div>`);
+ const excludes=[...new Map((result.prices||[]).filter(x=>x.type==='excluded').map(x=>[x.value,x])).values()].slice(0,5);
+ for(const x of excludes)rows.push(`<div><span>적립·포인트·할인액 등 (제외)</span><del>${C.won(x.value)}</del></div>`);
+ if(result.priceConfidence==='low'&&!result.price)rows.push('<div><span>⚠️ 가격 후보 충돌 / 원화 단위 미확인 — 자동 입력 보류</span></div>');
  $('scanPriceBreakdown').innerHTML=rows.join('')||'<span>상품 가격을 확인하지 못했습니다.</span>';
  $('ocrCandidates').textContent=result.warnings.join(' ')||'자동 인식 후보입니다. 구매 전에 정확한 SKU와 판매가를 검증하세요.';
  renderQuick();renderQuickLinks();
