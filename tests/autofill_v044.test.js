@@ -1,0 +1,23 @@
+const assert=require('node:assert/strict');
+const S=require('../screenshot.js');
+require('../catalogguard.js');
+const G=require('../checkoutguard.js');
+const tests=[];const test=(name,fn)=>tests.push([name,fn]);
+const dji='DJI Osmo Pocket 4 크리에이터콤보\n짐벌 카메라\n835,000원\n★ 4.91 · 리뷰 997';
+const single=S.analyze(dji);
+test('single DJI price recognized',()=>assert.equal(single.price,835000));
+test('parser confidence low without sales label',()=>assert.equal(single.priceConfidence,'low'));
+test('single amount autofills despite low confidence',()=>assert.equal(G.autoPurchase(single).price,835000));
+test('repeated OCR passes keep autofill',()=>assert.equal(G.autoPurchase(S.combine([dji,dji])).price,835000));
+test('missing product cannot autofill',()=>assert.equal(G.autoPurchase(S.analyze('835,000원')).price,null));
+test('reward never autofills',()=>assert.equal(G.autoPurchase(S.analyze('DJI Osmo Pocket 4\n적립 68,181원')).price,null));
+test('discount amount never autofills',()=>assert.equal(G.autoPurchase(S.analyze('DJI Osmo Pocket 4\n할인금액 35,000원')).price,null));
+test('member-only price never autofills',()=>assert.equal(G.autoPurchase(S.analyze('DJI Osmo Pocket 4\n멤버십 혜택가 835,000원')).price,null));
+test('original-only price never autofills',()=>assert.equal(G.autoPurchase(S.analyze('DJI Osmo Pocket 4\n정가 999,000원')).price,null));
+test('explicit selling price autofills',()=>assert.equal(G.autoPurchase(S.analyze('DJI Osmo Pocket 4\n판매가 835,000원')).price,835000));
+test('conflicting selling prices block autofill',()=>assert.equal(G.autoPurchase(S.combine(['DJI Osmo Pocket 4\n판매가 835,000원','DJI Osmo Pocket 4\n판매가 785,000원'])).price,null));
+test('cross-pass conditional same value blocks',()=>assert.equal(G.autoPurchase(S.combine(['DJI Osmo Pocket 4\n835,000원','DJI Osmo Pocket 4\n회원 혜택가 835,000원'])).price,null));
+test('Samsung ordinary minimum price',()=>assert.equal(G.autoPurchase(S.analyze('삼성전자 DDR5-5600 16GB\n최저가 349,690원\n무통장입금시 344,840원\n13,160원 적립')).price,349690));
+test('conflicting same-price evidence blocks',()=>assert.equal(G.autoPurchase({name:'DJI Pocket 4',price:835000,prices:[{value:835000,type:'main',raw:'835,000원'},{value:835000,type:'excluded',raw:'835,000원'}]}).price,null));
+let fail=0;for(const [name,fn] of tests){try{fn();console.log('PASS',name)}catch(e){fail++;console.error('FAIL',name,e.message)}}
+console.log((tests.length-fail)+'/'+tests.length+' v0.4.4 purchase-autofill tests');if(fail)process.exitCode=1;
