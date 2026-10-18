@@ -27,7 +27,7 @@ const cases=[
  ['no clickable marketplaces choice on search step',()=>{const page=html.split('<section class="page" id="search">')[1].split('<section class="page" id="records">')[0];assert.doesNotMatch(page,/id="searchLinks"/);assert.doesNotMatch(page,/id="includeNew"/)}],
  ['google source advertising preserved',()=>assert.match(ui,/default search results element|default search results|Google Standard Search Element still renders/i)],
  ['free engine configuration explicit',()=>assert.match(html,/id="marketEngineId"/)],
- ['service worker caches market modules',()=>{const sw=fs.readFileSync(path.join(base,'sw.js'),'utf8');assert.match(sw,/price-hunter-v060/);assert.match(sw,/market-ui\.js/)}],
+ ['service worker caches market modules',()=>{const sw=fs.readFileSync(path.join(base,'sw.js'),'utf8');assert.match(sw,/price-hunter-v070/);assert.match(sw,/market-ui\.js/)}],
 ];
 let fails=0;for(const [label,test] of cases)try{test();console.log('PASS',label)}catch(e){fails++;console.error('FAIL',label,e.message)}
 console.log(`Market integration: ${cases.length-fails}/${cases.length}`);if(fails)process.exitCode=1;
