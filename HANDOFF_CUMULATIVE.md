@@ -90,3 +90,10 @@ https://github.com/kdc916/Price-Hunter (`main`, GitHub Pages root 배포 예정)
 - 기존 OCR/수익계산/통합검색 흐름은 유지, 광고·가격 후보를 실거래로 임의 확정하지 않음.
 - 새 테스트 `tests/catalogguard_v041.test.js`, PWA 캐시 `price-hunter-v041`.
 - 실기기 OCR 인식률과 무료 Google CX 연동은 이 테스트 환경에서 검증되지 않았으며 추후 별도 확인.
+
+## v0.4.2 — 검색엔진 연결 기반 개선
+- Google Programmable Search Engine 공개 CX 값이 여전히 비어 있으므로(사용자의 Google 계정 인증 필요) **앱 내부 실제 매물 검색은 미연결**. 생성 전 완전한 통합 자동검색을 주장하지 않음.
+- 미연결 상태의 검색 버튼은 중고나라/번개장터/당근/네이버카페를 한 번에 포함한 공식 Google 사이트 지정 검색을 열도록 처리; 팝업 차단 시 수동 링크 노출. 가짜 시세 생성 금지.
+- CX 설정에 Google 공식 임베드 코드 붙여넣기 지원; API 키 형태 거부; 공개 관리 CX가 구버전 로컬 설정보다 우선.
+- `cx-setup.js`, 신규 `search_cx_v042.test.js`, PWA 캐시 v042 추가. 기존 데이터 키 변경 없음.
+- 통합 앱 내 실제 매물 결과 수신 확인은 **CX 발급·적용 후** 필요. 공식 설정: https://programmablesearchengine.google.com/controlpanel/all
