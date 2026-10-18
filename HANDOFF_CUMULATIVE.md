@@ -127,11 +127,25 @@ https://github.com/kdc916/Price-Hunter (`main`, GitHub Pages root 배포 예정)
 - 외부 사이트의 현재 판매가를 직접 조회·수집하거나 신규 유료 API에 접속한 패치는 아닙니다. 사용자가 촬영한 **쇼핑몰 이미지의 가격 해석 정확도** 개선입니다.
 
 ## v0.5.1 — Adaptive Region OCR / 한국어 OCR 엔진 연구
-- 실제 OCR 엔진은 여전히 **Tesseract.js 6**입니다. PaddleOCR PP-OCRv5 Korean은 후속 이중 엔진 후보이며, 이번 패치에서 설치·가동됐다고 주장하지 않습니다.
-- 수평형 쇼핑 카드·PC 2열·세로형 모바일에 따라 가격과 상품명 영역을 분리하여 확대 OCR을 수행합니다. 새 모듈 `ocr-regions.js`는 브라우저 캔버스 내에서만 처리합니다.
-- 기본 OCR에서 가격을 찾았더라도 **최초 가격 영역 한 번은 반드시 추가 확인**해 취소선 정가를 유일한 판매가로 잘못 믿는 위험을 낮춥니다.
-- 할인율 표기와 두 가격의 계산 비율이 일치하는 경우에만 높은 가격을 할인 전 가격 후보로 분리합니다. 한 줄에 두 개의 가격이 섞여 있고 구분 근거가 부족하면 자동 입력을 보류합니다.
-- 실제 로보락 스크린샷(675×250) 한 장의 Tesseract 5 CLI 실험에서 전체 OCR은 판매가 뒤 `원`을 누락했지만, 가격 영역 크롭 OCR은 `1,190,000원`을 인식했습니다. **이는 전체 인식률이나 모바일 Tesseract.js 정확도 보장이 아닙니다.**
-- 공식 PaddleOCR Browser SDK `@paddleocr/paddleocr-js`(Apache-2.0) 및 한국어 인식모델 `korean_PP-OCRv5_mobile_rec`(약 14MB)을 조사했습니다. 실제 브라우저 설치에는 검출 모델·ONNX/WASM 리소스, 모델 아카이브 호환성 및 모바일 벤치마크가 필요하므로 검증 전 강제 교체하지 않습니다.
-- 테스트 `tests/ocr_regions_v051.test.js` 24건, 전체 로컬 회귀 342건 PASS. 저장 데이터 및 기존 기능 유지, PWA 캐시 v051.
-- 참고: https://github.com/PaddlePaddle/PaddleOCR/blob/main/docs/version3.x/inference_deployment/cross_platform/browser.en.md
+- 앱의 실제 OCR 엔진은 현재 **Tesseract.js 6**입니다. **PaddleOCR PP-OCRv5 Korean**은 후속 이중 엔진 후보이며 이번 패치에 구동 완료됐다고 표기하지 않습니다.
+- 수평형 카드/데스크톱 2열/세로형 모바일에 따라 금액·상품명이 있는 영역을 별도로 확대합니다. `ocr-regions.js`에서 기하학적 크롭 후 PSM 6/11 인식, 최후 전체 고대비 검사.
+- 판매가 후보가 있다고 첫 OCR에서 조기 종료하지 않고, **첫 번째 가격 영역은 반드시 한 번 더 검사**합니다. 취소선 정가를 유일한 가격으로 잘못 판단할 위험을 줄입니다.
+- 할인 전 가격이 명시되지 않아도 `35%`와 `1,840,000원 → 1,190,000원`의 실제 할인율이 일치하고 가격들이 서로 다른 OCR 행에 존재할 때만 기존 높은 금액을 정가 후보로 분리합니다. 같은 행에 근거 없이 여러 가격이 있으면 기존대로 자동 입력하지 않습니다.
+- 로보락 S9 MaxV Ultra 화면의 상품명·금액 인식 문제는 실제 업로드된 샘플을 대상으로 Tesseract 5 CLI에서 테스트했습니다. 전체 OCR (`--psm 6`)에서는 `1,190,000` 뒤의 원 단위가 손실되었으나 상품 오른쪽의 가격 영역을 분리한 `--psm 6`에서는 `1,190,000원`을 읽는 결과가 나왔습니다. 이는 로컬 엔진의 단일 샘플이며 모바일 Tesseract.js 정확도 수치가 아닙니다.
+- 프레임 분석 결과의 정확도는 모델·OCR 원문·조명·화면 레이아웃에 영향을 받습니다. 실기기 E2E 테스트는 별도 필요.
+- 무료 PaddleOCR 조사: 공식 브라우저 SDK `@paddleocr/paddleocr-js`(Apache-2.0), `korean_PP-OCRv5_mobile_rec` 약 14 MB(한국어·영어·숫자). 검출·인식 ONNX 모델과 WASM 런타임 다운로드/배포, 한국어 모델 아카이브와 번들링의 실제 검증이 필요하여 검증 없는 자동 탑재를 보류.
+- 후속: PaddleOCR Browser SDK + Korean model ONNX/WebGPU/WASM 실제 동작 확인 → 10~30종 실제 스크린샷 가격 정확도·처리 시간·메모리 벤치마크 → Tesseract와 품질 비교 및 안전한 fallback.
+- 자료: https://github.com/PaddlePaddle/PaddleOCR/blob/main/docs/version3.x/inference_deployment/cross_platform/browser.en.md ; https://github.com/PaddlePaddle/PaddleOCR/blob/main/docs/version3.x/module_usage/text_recognition.en.md
+- GitHub Pages 저장 데이터 키 및 모든 시세 기록 보존. PWA 캐시 키 `price-hunter-v051`.
+
+## v0.6.0 (2026-10-19) — 원스크린 검색·수익 분석 UX
+
+- 목적: 사진 OCR이 끝나면 다른 탭/Google 페이지로 이동하지 않고 같은 촬영 화면에서 구매가/중고 예상 판매가/신품 참고가/예상 순수익/ROI/매물 카드를 자동 표시.
+- 새 모듈: `instant-engine.js` (Node/브라우저 겸용 검증 시세 계산, 기간/모델/상태/신뢰성 필터), `instant-dashboard.js` (통합 결과 렌더링).
+- `index.html`: 촬영 영역 바로 아래 원스크린 분석 카드, 바로가기·관리자 최초 연동 버튼, 모델 검색 결과 카드, 데이터 출처 설명. Google 제공 결과/광고 호스트는 촬영 화면으로 이동.
+- `app.js`: OCR 완료 시 `PriceHunterInstantDashboard.scan()` 자동 호출, 상품 확정 버튼에서 같은 촬영 페이지에 머무름. 빠른 시세/옵션 갱신과 대시보드 연동. 기존 저장 데이터 유지.
+- `market-ui.js`: 외부 Google 탭의 강제 열기 제거. CX 연결 시 앱 내 자동 검색, 미연결 시 실시간 시세 미연결 상태 표시. 색인 결과는 대시보드 카드에 미검증 값으로만 노출. 브라우저 localStorage 사용 불가 환경에서도 초기화 오류 없이 진행.
+- `sw.js`: v060 및 신규 모듈 캐싱.
+- `tests/instant_v060.test.js`: 다중 시세, 불일치 모델, 비검증 매물, 수수료, 손익, 원스크린 UI, 새 탭 자동 실행 금지 검사.
+- 검증: Node 회귀 및 JavaScript 문법 검사; Playwright Chromium에서 인라인 실행(실제 OCR 모델 요청 없이 문장 입력) 후 `835000` 자동 구매가, 대시보드 금액, 강제 외부 탭 0개, 모바일 가로 스크롤 없음, 브라우저 JS 에러 0개.
+- **미완료**: Google 공개 CX 발급/연결 및 실데이터 자동 조회, 스마트폰 사진 OCR 정확도 측정. 검색 결과 색인 가격은 실거래가로 자동 사용하지 않음. 기본 미연결 상황에서는 ROI를 계산하지 않음. 데이터 사실성 우선.
