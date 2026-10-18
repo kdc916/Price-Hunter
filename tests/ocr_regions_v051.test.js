@@ -32,6 +32,6 @@ t('price region always checked',()=>assert.match(app,/index>0&&sufficient\(\)/))
 t('text region can use PSM 11',()=>assert.equal(A[1].psm,11));
 t('merchant regression safety still active',()=>assert.match(html,/<script src="merchantguard\.js"><\/script><script src="ocr-regions\.js"><\/script>/));
 t('PWA caches OCR regions module',()=>assert.match(sw,/ocr-regions\.js/));
-t('new cache invalidates previous version',()=>assert.match(sw,/price-hunter-v060/));
+t('new cache invalidates previous version',()=>assert.match(sw,/price-hunter-v070/));
 let fail=0;for(const [label,fn] of tests){try{fn();console.log('PASS',label)}catch(err){fail++;console.error('FAIL',label,err.message)}}
 console.log(`Region OCR ${tests.length-fail}/${tests.length}`);if(fail)process.exitCode=1;
