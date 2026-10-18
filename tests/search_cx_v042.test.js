@@ -20,7 +20,7 @@ const tests=[
  ()=>assert.ok(html.includes('cx-setup.js')),
  ()=>assert.ok(html.includes('maxLength="1500"')===false),
  ()=>assert.ok(html.includes('maxlength="1500"')),
- ()=>assert.ok(sw.includes('price-hunter-v043')),
+ ()=>assert.ok(sw.includes('price-hunter-v044')),
  ()=>assert.ok(sw.includes('cx-setup.js')),
  ()=>assert.ok(M.collectiveLink({model:'ILCE-7M5',name:'Sony A7V'}).includes('google.com/search'))
 ];
