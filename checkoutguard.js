@@ -51,6 +51,24 @@ function combine(input){
  if(uncertain)warnings.push('서로 다른 판매가가 충돌하므로 구매가 자동 적용을 보류합니다.');
  return {...base,price,prices:all,conditionalPrices,priceCandidates:[...new Set(eligible.map(x=>x.value))],priceConfidence:high?'high':'low',confidence:high&&base.name?'high':'low',reviewRequired:!high,_priceScore:leader?.score??-100,warnings};
 }
+// A clearly printed single amount can be auto-filled without a nearby sales label.
+// Separate parser confidence from purchase autofill; reject contradictory evidence.
+function autoPurchase(result){
+ const value=result?.price;
+ if(!Number.isSafeInteger(value)||value<1000||value>200000000||!String(result?.name||'').trim())return {price:null,reason:'상품 또는 표시 판매가 미확인'};
+ const evidence=Array.isArray(result.prices)?result.prices:[];
+ const same=evidence.filter(p=>p.value===value);
+ const main=same.filter(p=>p.type==='main');
+ if(!main.length)return {price:null,reason:'일반 판매가 근거 부족'};
+ if(same.some(p=>p.type!=='main'))return {price:null,reason:'동일 금액의 적립·조건부·정가 표기가 충돌'};
+ const otherValues=new Set(evidence.filter(p=>p.type==='main'&&p.value!==value).map(p=>p.value));
+ if(otherValues.size)return {price:null,reason:'복수의 일반 판매가가 검출되어 확인 필요'};
+ const currency=main.some(p=>/(?:원|만원|천원|₩|￦)/.test(String(p.raw||'')));
+ if(!currency)return {price:null,reason:'원화 단위 누락'};
+ const clean=main.every(p=>!reward.test(String(p.context||''))&&!benefit.test(String(p.context||'')));
+ if(!clean)return {price:null,reason:'가격 주변의 적립·조건부 문구 확인 필요'};
+ return {price:value,reason:result.priceConfidence==='high'?'일반 판매가 자동 적용':'단일 원화 표시 판매가 자동 적용'};
+}
 S.analyze=analyze;S.combine=combine;
-return {classify,reconcile,analyze,combine};
+return {classify,reconcile,analyze,combine,autoPurchase};
 });
