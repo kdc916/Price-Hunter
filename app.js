@@ -170,7 +170,7 @@ function applyScanResult(result){lastScan=result;
  }));
  $('ocrCandidates').textContent=result.warnings.join(' ')||'상품명·가격이 자동 추출되었습니다. 실물 SKU와 최종 결제 금액을 확인하세요.';
  renderQuick();renderQuickLinks();
- window.PriceHunterInstantDashboard?.scan(draftProduct());
+ window.PriceHunterInstantDashboard?.scan(draftProduct());window.PriceHunterCafe?.prefill();
 }
 $('applyOcr').addEventListener('click',parseOCR);
 $('barcodeBtn').addEventListener('click',async()=>{const file=selectedFile();if(!file){setStatus('ocrStatus','바코드를 검색할 이미지를 선택하세요.','error');return;}
