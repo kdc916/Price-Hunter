@@ -40,6 +40,7 @@ test('OAuth anti-CSRF state',()=>assert.match(server,/ph_oauth/));
 test('same-origin CSRF check',()=>assert.match(server,/verifyOrigin\(req\)/));
 test('session cookie httpOnly',()=>assert.match(server,/HttpOnly; SameSite=Lax/));
 test('single-use OAuth state',()=>assert.match(server,/DELETE FROM ph_oauth/));
+test('official approval preserves discovery time',()=>assert.match(server,/discoveredAt:row\.discovered_at/));
 test('member direct publish',()=>assert.match(server,/finishPublishing\(e,id,normalized,user,image\)/));
 test('operator queue before publishing',()=>assert.match(server,/normalized\.mode==='official'\?'pending':'publishing'/));
 test('operator atomic moderation',()=>assert.match(server,/WHERE id=\? AND status=\?/));
