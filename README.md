@@ -1,4 +1,4 @@
-# Price Hunter v0.4.1 — OCR 구매가 오인식 방지
+# Price Hunter v0.6.0 — 사진 인식부터 시세·수익까지 한 화면
 
 ## 핵심 변경 (2026-10-18)
 - **적립금·포인트·캐시백·할부금·배송비·할인액**은 화면에 `원`이 붙어도 구매가로 채택하지 않습니다.
@@ -143,11 +143,35 @@ node tests/screenshot_v030.test.js
 - 외부 사이트의 현재 판매가를 직접 조회·수집하거나 신규 유료 API에 접속한 패치는 아닙니다. 사용자가 촬영한 **쇼핑몰 이미지의 가격 해석 정확도** 개선입니다.
 
 ## v0.5.1 — Adaptive Region OCR / 한국어 OCR 엔진 연구
-- 실제 OCR 엔진은 여전히 **Tesseract.js 6**입니다. PaddleOCR PP-OCRv5 Korean은 후속 이중 엔진 후보이며, 이번 패치에서 설치·가동됐다고 주장하지 않습니다.
-- 수평형 쇼핑 카드·PC 2열·세로형 모바일에 따라 가격과 상품명 영역을 분리하여 확대 OCR을 수행합니다. 새 모듈 `ocr-regions.js`는 브라우저 캔버스 내에서만 처리합니다.
-- 기본 OCR에서 가격을 찾았더라도 **최초 가격 영역 한 번은 반드시 추가 확인**해 취소선 정가를 유일한 판매가로 잘못 믿는 위험을 낮춥니다.
-- 할인율 표기와 두 가격의 계산 비율이 일치하는 경우에만 높은 가격을 할인 전 가격 후보로 분리합니다. 한 줄에 두 개의 가격이 섞여 있고 구분 근거가 부족하면 자동 입력을 보류합니다.
-- 실제 로보락 스크린샷(675×250) 한 장의 Tesseract 5 CLI 실험에서 전체 OCR은 판매가 뒤 `원`을 누락했지만, 가격 영역 크롭 OCR은 `1,190,000원`을 인식했습니다. **이는 전체 인식률이나 모바일 Tesseract.js 정확도 보장이 아닙니다.**
-- 공식 PaddleOCR Browser SDK `@paddleocr/paddleocr-js`(Apache-2.0) 및 한국어 인식모델 `korean_PP-OCRv5_mobile_rec`(약 14MB)을 조사했습니다. 실제 브라우저 설치에는 검출 모델·ONNX/WASM 리소스, 모델 아카이브 호환성 및 모바일 벤치마크가 필요하므로 검증 전 강제 교체하지 않습니다.
-- 테스트 `tests/ocr_regions_v051.test.js` 24건, 전체 로컬 회귀 342건 PASS. 저장 데이터 및 기존 기능 유지, PWA 캐시 v051.
-- 참고: https://github.com/PaddlePaddle/PaddleOCR/blob/main/docs/version3.x/inference_deployment/cross_platform/browser.en.md
+- 앱의 실제 OCR 엔진은 현재 **Tesseract.js 6**입니다. **PaddleOCR PP-OCRv5 Korean**은 후속 이중 엔진 후보이며 이번 패치에 구동 완료됐다고 표기하지 않습니다.
+- 수평형 카드/데스크톱 2열/세로형 모바일에 따라 금액·상품명이 있는 영역을 별도로 확대합니다. `ocr-regions.js`에서 기하학적 크롭 후 PSM 6/11 인식, 최후 전체 고대비 검사.
+- 판매가 후보가 있다고 첫 OCR에서 조기 종료하지 않고, **첫 번째 가격 영역은 반드시 한 번 더 검사**합니다. 취소선 정가를 유일한 가격으로 잘못 판단할 위험을 줄입니다.
+- 할인 전 가격이 명시되지 않아도 `35%`와 `1,840,000원 → 1,190,000원`의 실제 할인율이 일치하고 가격들이 서로 다른 OCR 행에 존재할 때만 기존 높은 금액을 정가 후보로 분리합니다. 같은 행에 근거 없이 여러 가격이 있으면 기존대로 자동 입력하지 않습니다.
+- 로보락 S9 MaxV Ultra 화면의 상품명·금액 인식 문제는 실제 업로드된 샘플을 대상으로 Tesseract 5 CLI에서 테스트했습니다. 전체 OCR (`--psm 6`)에서는 `1,190,000` 뒤의 원 단위가 손실되었으나 상품 오른쪽의 가격 영역을 분리한 `--psm 6`에서는 `1,190,000원`을 읽는 결과가 나왔습니다. 이는 로컬 엔진의 단일 샘플이며 모바일 Tesseract.js 정확도 수치가 아닙니다.
+- 프레임 분석 결과의 정확도는 모델·OCR 원문·조명·화면 레이아웃에 영향을 받습니다. 실기기 E2E 테스트는 별도 필요.
+- 무료 PaddleOCR 조사: 공식 브라우저 SDK `@paddleocr/paddleocr-js`(Apache-2.0), `korean_PP-OCRv5_mobile_rec` 약 14 MB(한국어·영어·숫자). 검출·인식 ONNX 모델과 WASM 런타임 다운로드/배포, 한국어 모델 아카이브와 번들링의 실제 검증이 필요하여 검증 없는 자동 탑재를 보류.
+- 후속: PaddleOCR Browser SDK + Korean model ONNX/WebGPU/WASM 실제 동작 확인 → 10~30종 실제 스크린샷 가격 정확도·처리 시간·메모리 벤치마크 → Tesseract와 품질 비교 및 안전한 fallback.
+- 자료: https://github.com/PaddlePaddle/PaddleOCR/blob/main/docs/version3.x/inference_deployment/cross_platform/browser.en.md ; https://github.com/PaddlePaddle/PaddleOCR/blob/main/docs/version3.x/module_usage/text_recognition.en.md
+- GitHub Pages 저장 데이터 키 및 모든 시세 기록 보존. PWA 캐시 키 `price-hunter-v051`.
+
+## v0.6.0 — 촬영 화면 하나에서 통합 결과 보기 (2026-10-19)
+
+사용자 흐름: **사진 선택/촬영 → 한글 OCR → 가격 검증 → 같은 촬영 화면에서 결과 표시 → 연결된 공개 매물 검색(가능한 경우 자동 실행)**. 중고 플랫폼을 사용자가 선택할 필요가 없습니다. 기존 별도 Google 탭을 자동 실행하는 동작은 제거했습니다.
+
+- `instant-engine.js`: 기존 브라우저에 저장된 **사용자가 확인한 동일 모델 시세**만으로 중고 중앙값/범위/순이익/ROI를 계산합니다. 3건 미만에서는 미산정으로 표시합니다. 판매완료 표시만 된 매물은 실거래로 인정하지 않습니다. 확인된 실거래 3건이 있으면 우선하고, 없으면 확인한 판매중 호가 3건으로 **가정**을 표시합니다.
+- `instant-dashboard.js`: 구매가·중고 예상가·검증된 신품 가격·순이익·ROI·증빙 수·검색 색인 매물을 한 화면에 표시합니다. 확인 가능한 검색 매물은 앱 내부 카드로 렌더링하지만 색인 호가는 **확인된 실거래가가 아니므로 ROI 통계에 자동 합산하지 않습니다.**
+- `market-ui.js`: 사용자 개입 없이 OCR 완료 시 앱 내부 공개 검색을 시도합니다. 기존처럼 Google 새 탭을 **자동으로 열지 않습니다**. 관리자 CX 미연결이면 결과가 없다는 상태를 솔직히 표시합니다. 사용자는 마켓을 고를 필요가 없습니다.
+- 공식 Google Programmable Search **무료 Standard Search Element**는 웹에서 공개된 게시물만 검색합니다. 최초 한 번 사이트 관리자의 Google 로그인·CX 발급·설정이 필요합니다. Google은 2026-01-20부터 신규 엔진을 사이트 지정 검색으로 제한합니다. 중고나라, 번개장터, 당근 등 원하는 도메인을 등록한 뒤 CX를 `market-config.js`에 넣으면 모든 방문자에게 연결됩니다. 무료라고 모든 외부 매물 API가 제공되는 것은 아닙니다.
+- 메뉴 `② 시장 검색`은 선택적 세부 확인/관리자 설정용으로 유지합니다. 기존 localStorage `price-hunter-0.1.0` 유지, PWA 캐시 v060.
+- `tests/instant_v060.test.js` 32건을 포함한 전체 회귀 테스트. 가격 이미지 OCR 실제 스마트폰 시험과 외부 Google PSE 실제 수신은 **CX가 없어 미검증**입니다.
+
+### 검색 CX 한 번만 연결하는 방법
+
+1. https://programmablesearchengine.google.com/controlpanel/all 에서 검색 엔진을 생성합니다.
+2. **Sites to search**에 `joongna.com`, `bunjang.co.kr`, `daangn.com`, `cafe.naver.com` 등을 등록합니다.
+3. 발급된 **공개 검색 엔진 ID(CX)**를 프로젝트의 `market-config.js`에 입력하여 GitHub에 반영합니다. 사이트 관리자용 브라우저 UI에서 붙여넣으면 그 브라우저에서만 적용됩니다.
+4. GitHub Pages 배포 후 검색 결과 실제 도착·모델 일치·가격 검증 상태를 실기기에서 점검해야 합니다. Google 제공 검색 결과/광고를 숨기거나 임의로 가공해 실제 판매완료 금액으로 표시하지 않습니다.
+
+### 중요한 차이
+
+정적 GitHub Pages만으로 중고나라·당근·번개장터의 비공개/지역 매물을 임의 수집하거나 **현재 시장 전체 실거래 금액**을 보장할 수 없습니다. 이 버전은 화면 자동화와 검증 가능한 데이터의 수익 계산을 완성했으며, **CX 발급 전 실시간 통합 매물 조회가 완성됐다는 뜻은 아닙니다.**
