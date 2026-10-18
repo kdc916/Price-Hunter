@@ -16,9 +16,9 @@ function tab(name){document.querySelectorAll('.tab').forEach(b=>{const yes=b.dat
 document.querySelectorAll('[data-tab]').forEach(b=>b.addEventListener('click',()=>tab(b.dataset.tab)));
 function productName(){return state.product.name;}
 function draftProduct(){return {name:$('productName').value.trim(),model:$('modelCode').value.trim(),barcode:$('barcode').value.trim(),purchase:Number($('purchasePrice').value||0)};}
-function applyProduct(){const p=draftProduct();if(p.name.length<3){alert('상품명은 최소 3자 이상 입력하세요.');return false;}if(p.purchase<1000||!Number.isInteger(p.purchase)||p.purchase>200000000){alert('매장 구매가는 1,000원 이상 2억 원 이하로 입력하세요.');return false;}if(p.model && !C.normalize(p.name).replace(/ /g,'').includes(C.normalize(p.model).replace(/ /g,''))){if(!confirm('상품명에 모델 코드가 포함되어 있지 않습니다. 정확한 모델이 맞나요?'))return false;}state.product=p;save();render();$('calcBuy').value=p.purchase;tab('search');window.PriceHunterAutoMarket?.run(p);return true;}
+function applyProduct(){const p=draftProduct();if(p.name.length<3){alert('상품명은 최소 3자 이상 입력하세요.');return false;}if(p.purchase<1000||!Number.isInteger(p.purchase)||p.purchase>200000000){alert('매장 구매가는 1,000원 이상 2억 원 이하로 입력하세요.');return false;}if(p.model && !C.normalize(p.name).replace(/ /g,'').includes(C.normalize(p.model).replace(/ /g,''))){if(!confirm('상품명에 모델 코드가 포함되어 있지 않습니다. 정확한 모델이 맞나요?'))return false;}state.product=p;save();render();$('calcBuy').value=p.purchase;tab('scan');window.PriceHunterInstantDashboard?.scan(p);window.PriceHunterAutoMarket?.run(p);document.getElementById('oneScreenDashboard')?.scrollIntoView({behavior:'smooth',block:'start'});return true;}
 $('confirmProduct').addEventListener('click',applyProduct);
-$('clearProduct').addEventListener('click',()=>{if(confirm('현재 인식 중인 상품을 초기화할까요? 보관한 시세 이력은 유지됩니다.')){['productName','modelCode','barcode','purchasePrice','ocrText'].forEach(id=>$(id).value='');lastScan=null;$('scanPriceBreakdown').textContent='사진을 선택하면 가격 후보가 표시됩니다.';$('scanConfidence').textContent='이미지 선택 전';renderQuick();}});
+$('clearProduct').addEventListener('click',()=>{if(confirm('현재 인식 중인 상품을 초기화할까요? 보관한 시세 이력은 유지됩니다.')){['productName','modelCode','barcode','purchasePrice','ocrText'].forEach(id=>$(id).value='');lastScan=null;$('scanPriceBreakdown').textContent='사진을 선택하면 가격 후보가 표시됩니다.';$('scanConfidence').textContent='이미지 선택 전';renderQuick();window.PriceHunterInstantDashboard?.updateResults([]);window.PriceHunterInstantDashboard?.render();}});
 function renderLinks(){const name=productName();$('searchProductName').textContent=name||'미선택';
  const link=$('allMarketSearchFallback');if(name&&window.PriceHunterMarketSearch)link.href=window.PriceHunterMarketSearch.collectiveLink(state.product);
 }
@@ -33,7 +33,7 @@ function previewFile(file){if(currentPreviewUrl)URL.revokeObjectURL(currentPrevi
 function receiveFile(file,source='이미지'){
  if(!isImageFile(file)){setStatus('ocrStatus','PNG·JPG·WebP 등 이미지 파일을 선택하세요.','error');return;}
  if(file.size>22*1024*1024){setStatus('ocrStatus','이미지가 22MB를 넘습니다. 크기를 줄여 다시 시도하세요.','error');return;}
- currentPastedFile=file;previewFile(file);lastScan=null;$('ocrText').value='';$('productName').value='';$('modelCode').value='';$('purchasePrice').value='';renderQuick();
+ currentPastedFile=file;previewFile(file);lastScan=null;$('ocrText').value='';$('productName').value='';$('modelCode').value='';$('purchasePrice').value='';renderQuick();window.PriceHunterInstantDashboard?.updateResults([]);window.PriceHunterInstantDashboard?.render();
  const token=++scanToken;setStatus('ocrStatus',`${source} 입력됨. 상품명과 가격을 자동 분석합니다…`);
  ocrImage(file,token);
 }
@@ -170,6 +170,7 @@ function applyScanResult(result){lastScan=result;
  }));
  $('ocrCandidates').textContent=result.warnings.join(' ')||'상품명·가격이 자동 추출되었습니다. 실물 SKU와 최종 결제 금액을 확인하세요.';
  renderQuick();renderQuickLinks();
+ window.PriceHunterInstantDashboard?.scan(draftProduct());
 }
 $('applyOcr').addEventListener('click',parseOCR);
 $('barcodeBtn').addEventListener('click',async()=>{const file=selectedFile();if(!file){setStatus('ocrStatus','바코드를 검색할 이미지를 선택하세요.','error');return;}
@@ -237,7 +238,7 @@ function cleanQuickOutliers(items){if(!$('quickOutliers').checked||items.length<
 function renderQuickLinks(){const name=quickProduct().name;const host=$('quickLinks');host.replaceChildren();if(!name)return;
  const button=document.createElement('button');button.type='button';button.className='btn main';button.textContent='🔎 모든 중고시장 통합 검색 →';button.addEventListener('click',()=>{$('confirmProduct').click();});host.appendChild(button);
 }
-function renderQuick(){const prod=quickProduct(),el=$('quickResult');renderQuickLinks();
+function renderQuick(){const prod=quickProduct(),el=$('quickResult');renderQuickLinks();window.PriceHunterInstantDashboard?.render();
  if(!prod.name||!prod.price){el.innerHTML='<div class="info warning">제품명과 구매 가격을 사진에서 확인하거나 입력해 주세요. 중고시세가 없을 때 수익을 추정하지 않습니다.</div>';return;}
  const before=quickPool(),sold=cleanQuickOutliers(before.filter(r=>r.state==='confirmed_sold')),asking=cleanQuickOutliers(before.filter(r=>r.state==='active'));
  const items=sold.length>=3?sold:asking;const kind=sold.length>=3?'실거래 직접 확인':'중고 판매중 호가';const sample=items.length;
@@ -268,6 +269,7 @@ $('quickSave').addEventListener('click',()=>{const prod=quickProduct();if(!prod.
  state.product={name:prod.name,model:prod.model,barcode:$('barcode').value.trim(),purchase:prod.price};
  state.analyses.unshift({id:Date.now()+'_'+Math.random().toString(36).slice(2),date:new Date().toISOString(),name:prod.name,purchase:prod.price,sale:Math.round(val),profit:result.profit,roi:result.roi,askingCount:ask.length,soldCount:sold.length,askingMedian:ask.length?C.stats(ask).median:null,soldMedian:sold.length?C.stats(sold).median:null,verified:sold.length>=3});
  save();renderHistory();tab('history');});
+window.PriceHunterDashboardData=()=>({product:draftProduct(),listings:state.listings});
 function fillFields(){const p=state.product; $('productName').value=p.name;$('modelCode').value=p.model;$('barcode').value=p.barcode;$('purchasePrice').value=p.purchase||'';$('calcBuy').value=p.purchase||'';}
 function render(){renderLinks();renderRecords();renderCalc();renderHistory();renderQuick();}
 restore();fillFields();render();
