@@ -1,16 +1,18 @@
-/* Price Hunter v0.4.0 — single-click in-page multi-market search.
+/* Price Hunter v0.4.2 — one-click market search with CX handoff and honest fallback.
    Data source: user-configured free Google Programmable Search Standard Element. */
 (function(){
 'use strict';
 const M=window.PriceHunterMarketSearch;
 const $=id=>document.getElementById(id);
 const CXKEY='price-hunter-market-cx';
-const configCX=String(window.PRICE_HUNTER_MARKET_CX||'').trim();
-let cx=localStorage.getItem(CXKEY)||configCX;
+const parseCX=window.PriceHunterCX?.parseCX||((v)=>String(v||'').trim());
+// The site's published engine takes priority over obsolete visitor settings.
+const configCX=parseCX(window.PRICE_HUNTER_MARKET_CX);
+let cx=configCX||parseCX(localStorage.getItem(CXKEY));
 let enginePromise=null, currentProduct=null, runId=0;
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 function status(message,warning=false){const el=$('marketSearchStatus');el.textContent=message;el.className='info'+(warning?' warning':'');}
-function cfgValid(s){return /^[A-Za-z0-9:_-]{8,120}$/.test(s);}
+function cfgValid(s){return Boolean(window.PriceHunterCX?.validCX(s));}
 function showSources(results){const counts=new Map(M.markets.map(x=>[x.name,0]));for(const r of results)counts.set(r.market,(counts.get(r.market)||0)+1);
  const host=$('marketSourceSummary');host.replaceChildren();for(const [market,count] of counts){const pill=document.createElement('span');pill.className='pill';pill.textContent=`${market} ${count}건`;host.append(pill);}}
 function resultCard(r){const card=document.createElement('article');card.className='market-result';
@@ -64,7 +66,14 @@ async function run(product){
  const query=M.queryFor(currentProduct);
  $('marketSearchResults').innerHTML='<div class="empty">통합 검색 준비 중… 중고 플랫폼을 따로 선택하지 않아도 됩니다.</div>';
  $('marketSourceSummary').replaceChildren();
- if(!cx){status('무료 통합 검색 엔진이 아직 연결되지 않았습니다. 아래 관리자 설정에서 CX를 한 번 등록하면 이후에는 버튼 한 번으로 결과가 표시됩니다.',true);$('marketEngineSettings').open=true;return;}
+ if(!cx){
+  // No CX: official combined marketplace Google search, never fabricate in-app listings.
+  const url=M.collectiveLink(currentProduct);
+  const tab=window.open(url,'_blank','noopener,noreferrer');
+  status(tab===null?'브라우저가 새 탭 열기를 제한했을 수 있습니다. 아래 구글 통합 검색 링크를 눌러 주세요.':'공식 Google 통합 검색을 새 탭으로 열었습니다. 앱 안에서 결과를 표시하려면 사이트 관리자 CX 1회 연결이 필요합니다.',true);
+  $('marketSearchResults').innerHTML='<div class="empty">검색 엔진 ID 미설정 · 현재 중고 시세를 가져온 것처럼 표시하지 않습니다. <a href="'+esc(url)+'" target="_blank" rel="noopener noreferrer">중고 마켓 통합 검색 바로 열기 ↗</a></div>';
+  return;
+ }
  const task=++runId;
  status(`검색 중: ${query} · Google에 등록된 공개 중고 매물 조회 중…`);
  try{await engine();if(task!==runId)return;
@@ -77,13 +86,13 @@ async function run(product){
 $('runMarketSearch').addEventListener('click',()=>run());
 $('marketEngineId').value=cx;
 $('saveMarketEngine').addEventListener('click',()=>{
- const input=$('marketEngineId').value.trim();if(!cfgValid(input)){status('정확한 Google 검색 엔진 CX 식별자를 입력하세요. API 키가 아닙니다.',true);return;}
+ const input=parseCX($('marketEngineId').value);if(!cfgValid(input)){status('Google 검색 엔진 ID(CX) 또는 Google 제공 임베드 코드를 넣어 주세요. 비밀번호나 API 키는 입력하지 마세요.',true);return;}
  localStorage.setItem(CXKEY,input);
- if(cx&&cx!==input){alert('검색 엔진을 변경했습니다. 새 엔진을 적용하려면 페이지를 다시 열어야 합니다.');location.reload();return;}
+ if(cx&&cx!==input){alert('검색 엔진 ID가 변경되었습니다. 새 검색 엔진을 적용하기 위해 페이지를 다시 불러옵니다.');location.reload();return;}
  cx=input;status('무료 검색 엔진 ID를 저장했습니다. 통합 검색 버튼을 눌러주세요.');
  $('marketEngineSettings').open=false;
 });
 if(cx){status('무료 Google 통합 검색 준비 완료. 모델 확정 시 모든 중고 마켓을 자동 검색합니다.');}
-else{status('무료 통합 검색 엔진 1회 연결이 필요합니다. 연결 전에는 한 번의 구글 전체 검색만 가능합니다.',true);}
+else{status('앱 내 검색용 Google CX가 아직 발급되지 않았습니다. 지금은 버튼 한 번으로 여러 중고 마켓을 묶은 공식 Google 검색을 열 수 있습니다.',true);}
 window.PriceHunterAutoMarket={run};
 })();
