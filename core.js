@@ -40,16 +40,23 @@
     const priced=prices.filter(p=>/할인가|행사가|판매가|특가|회원가|세일|discount/i.test(p.context));
     return {name:scored[0]?.text||'', price:priced[0]?.value||prices[0]?.value||null, allPrices:prices, candidates:scored.slice(0,5).map(s=>s.text)};
   }
+  function getGeneration(value) {
+    const s=normalize(value);
+    const m=s.match(/(?:^|\s)([1-9])\s*세대(?:$|\s)/)||s.match(/(?:^|\s)(?:gen|generation)\s*([1-9])(?:$|\s)/)||s.match(/(?:^|\s)([1-9])(?:st|nd|rd|th)\s*(?:gen|generation)(?:$|\s)/);
+    return m?Number(m[1]):null;
+  }
   function matchProduct(target, candidate, opts={}) {
     const wanted=tokenize(target), got=tokenize(candidate), targetCodes=modelCodes(target), candidateCodes=modelCodes(candidate);
     if(!wanted.length||!got.length) return {status:'review',score:0,reason:'모델명이 부족합니다.'};
+    const expectedGen=getGeneration(target),observedGen=getGeneration(candidate);
+    if(expectedGen!==null&&observedGen!==null&&expectedGen!==observedGen)return {status:'mismatch',score:0,reason:'제품 세대가 다릅니다.'};
     const required=String(opts.model||'').trim();
     if(required && !normalize(candidate).replace(/ /g,'').includes(normalize(required).replace(/ /g,''))) return {status:'mismatch',score:0,reason:'필수 모델 코드가 일치하지 않습니다.'};
     if(targetCodes.length && candidateCodes.length && !targetCodes.some(x=>candidateCodes.includes(x)))
       return {status:'mismatch',score:0,reason:'서로 다른 모델 코드가 감지되었습니다.'};
     let score=wanted.filter(w=>got.includes(w)).length / wanted.length;
     if(targetCodes.length && !candidateCodes.length) score=Math.min(score,0.69);
-    if(/\b(2세대|3세대|4세대|2nd|3rd|4th)\b/.test(target) && !got.some(t=>/^\d세대$|^\d(?:nd|rd|th)$/.test(t)))score=Math.min(score,0.65);
+    if(expectedGen!==null&&observedGen===null)score=Math.min(score,0.65);
     const value=Math.round(score*100);
     return {status:score>=0.84?'matched':score>=0.4?'review':'mismatch',score:value,reason:score>=0.84?'문자열·모델 식별 일치':'상품 세부 모델·세대·구성품 직접 확인 필요'};
   }
