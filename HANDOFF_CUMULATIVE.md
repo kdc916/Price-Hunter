@@ -97,3 +97,12 @@ https://github.com/kdc916/Price-Hunter (`main`, GitHub Pages root 배포 예정)
 - CX 설정에 Google 공식 임베드 코드 붙여넣기 지원; API 키 형태 거부; 공개 관리 CX가 구버전 로컬 설정보다 우선.
 - `cx-setup.js`, 신규 `search_cx_v042.test.js`, PWA 캐시 v042 추가. 기존 데이터 키 변경 없음.
 - 통합 앱 내 실제 매물 결과 수신 확인은 **CX 발급·적용 후** 필요. 공식 설정: https://programmablesearchengine.google.com/controlpanel/all
+
+## v0.4.3 (2026-10-18) — 삼성 메모리 판매가 자동 적용 개선
+- 사례: 최저가 349,690원, 무통장입금 혜택가 344,840원, 포인트 13,160원 표시 시 판매가 입력 공란.
+- `app.js`: 오른쪽 가격 영역 집중 크롭 `focusPriceOCR`, OCR 4차 분석, 신뢰도 통과 시 조기 종료, 사용자 확인형 후보 가격 버튼.
+- `checkoutguard.js`: 여러 OCR 시도의 후보 가격을 통합하면서 혜택가/적립액을 일반 판매가로 승격하지 않는 검증 단계 추가.
+- 구매가 및 수익 계산 원본 입력은 신뢰도 높은 일반 판매가 또는 명시적 사용자 확인 값으로만 설정.
+- `sw.js` cache v043 및 신규 회귀 테스트, 기존 localStorage 키 보존.
+- 가격영역 크롭 육안 검증 및 OCR 전사 기반 단위 테스트. 실제 Tesseract 이미지 OCR/모바일 실기기 검증 미완료.
+- CX 미설정으로 앱 내 실시간 Google 매물 검색까지 연결된 것은 아님.
