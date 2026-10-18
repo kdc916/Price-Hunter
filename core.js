@@ -10,7 +10,7 @@
   const stop = new Set(['정품','판매','중고','새제품','미개봉','당근','번개장터','중고나라','무료배송','포함','최저가','카메라','제품','할인','급처','가격','세일','the','for','with','of']);
   const tokenize = s => normalize(s).split(' ').filter(x=>x.length>1&&!stop.has(x));
   const SKU_RE = /\b(?=[a-z0-9-]{3,}\b)(?=[a-z0-9-]*\d)(?=[a-z0-9-]*[a-z])[a-z]+[\s-]?\d[a-z0-9-]*\b/gi;
-  function modelCodes(text) { return [...new Set((String(text||'').match(SKU_RE)||[]).map(s=>s.toLowerCase().replace(/[\s-]/g,'')))]; }
+  function modelCodes(text) {return [...new Set((String(text||'').match(/[a-z0-9][a-z0-9-]{3,24}/gi)||[]).map(s=>s.toLowerCase().replace(/-+/g,'').trim()).filter(s=>s.length>=4 && /[a-z]/.test(s)&&/\d/.test(s)&&!/^\d{1,4}(?:cm|mm|kg|gb|tb|hz|mah|inch|fps|mp|k|p)$/.test(s)))];}
   function parseNumber(s) { return Number(String(s).replace(/,/g,'').replace(/\s+/g,'')); }
   function extractPrices(text) {
     const s=String(text||'').normalize('NFKC');
