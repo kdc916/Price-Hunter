@@ -1,0 +1,5 @@
+{
+  "name":"price-hunter-community-worker","private":true,"type":"module",
+  "scripts":{"prepare":"node ../scripts/prepare-worker-assets.mjs", "dev":"npm run prepare && npx wrangler dev", "deploy":"npm run prepare && npx wrangler deploy", "db:init":"npx wrangler d1 migrations apply price-hunter-community --remote"},
+  "devDependencies":{"wrangler":"^4.0.0"}
+}
