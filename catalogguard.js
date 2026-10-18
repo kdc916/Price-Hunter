@@ -48,7 +48,7 @@ function classify(lines){const out=[];
    if(type==='main'){
     if(markerKind(label)==='main'){score+=90;reason='판매가·최저가 라벨 확인';}
     else if(row>0&&markerKind(lines[row-1])==='main'&&!/\d/.test(lines[row-1])){score+=80;reason='직전 줄의 판매가 라벨 확인';}
-    if(PERCENT.test(left))score+=22;
+    if(PERCENT.test(left))score+=85;
     if(line===h.raw)score+=5;
    }else{score=type==='total'?25:-120;reason={excluded:'적립금·할인액·배송비·할부 등 제외',original:'소비자가 또는 정가',conditional:'조건부 혜택가',total:'주문합계·중복 금액'}[type];}
    out.push({...h,type,score,row,context:line,reason});
