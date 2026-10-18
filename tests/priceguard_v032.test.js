@@ -28,6 +28,7 @@ const cases=[
  ['reward before sale on same line',()=>assert.equal(S.analyze('소니 A7M5\n포인트 68,181원 / 판매가 3,109,090원').price,3109090)],
  ['reward after sale on same line',()=>assert.equal(S.analyze('소니 A7M5\n판매가 3,109,090원 / 68,181원 적립').price,3109090)],
  ['reward between sale and points',()=>assert.equal(S.analyze('소니 A7M5\n3,109,090원 적립 68,181원').price,3109090)],
+ ['plain 할인 amount excluded',()=>assert.equal(S.analyze('소니 A7M5\n할인 68,181원').price,null)],
  ['savings excluded',()=>assert.equal(S.analyze('소니 A7M5\n할인금액 424,000원').price,null)],
  ['savings near legitimate price',()=>assert.equal(S.analyze('소니 A7M5\n할인금액 424,000원\n판매가 3,109,090원').price,3109090)],
  ['normal discounted price permitted',()=>assert.equal(S.analyze('소니 A7M5\n할인가 3,109,090원').price,3109090)],
