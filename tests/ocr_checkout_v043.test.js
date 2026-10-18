@@ -25,6 +25,6 @@ t('auto apply uses evidence policy instead of high-only gate',()=>assert.match(a
 t('conditional values rejected from manual options',()=>assert.match(app,/type==='conditional'\|\|x\.type==='excluded'/));
 t('explicit confirm before manual assignment',()=>assert.ok(app.includes('if(!confirm(')));
 t('manual assignment updates quick calculation',()=>assert.match(app,/\$\('purchasePrice'\)\.value=String\(candidate\);renderQuick\(\)/));
-t('optimized OCR stopping rule',()=>assert.match(app,/PriceHunterCheckoutGuard\?\.autoPurchase\(merged\)/));
+t('optimized OCR stopping rule',()=>assert.match(app,/PriceHunterOCRRegions\?\.isGoodCandidate\(merged\)/));
 let bad=0;for(const [name,fn] of cases){try{fn();console.log('PASS',name)}catch(e){bad++;console.error('FAIL',name,e.message)}}
 console.log((cases.length-bad)+'/'+cases.length+' checkout OCR regression');if(bad)process.exitCode=1;
