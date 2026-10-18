@@ -28,7 +28,7 @@
 - 상품별 데이터는 동일 타이틀의 스냅샷으로 연결됨. 제품명을 재입력해서 바꾸면 기존 시세가 다른 이름 아래 남을 수 있음.
 
 ## 테스트 결과
-- `node tests/core.test.js`: 22/22 통과 (가격 단위/배송비 오인식 방지/동일 모델 판정/이종 모델 차단/시세 중앙값/손익분기 계산 등)
+- `node tests/core.test.js`: 24/24 통과 (가격 단위/배송비 오인식 방지/동일 모델 판정/이종 모델 차단/시세 중앙값/손익분기 계산 등)
 - `node --check app.js` / `core.js`: 구문 검사 통과
 - Chromium DOM 인터랙션 모의 테스트: 데스크톱/390px 모바일에서 검색링크 7개, 시세 등록, 순이익 50,000원, 분석 보관 정상, JS 예외 0개
 - 모바일 390px 가로 스크롤 이탈 없음. 다만 테스트 브라우저의 보안 정책으로 HTTPS 페이지 자체 연결이 차단되어 OCR CDN 실제 호출과 PWA 실배포를 확인하지 못함.
@@ -52,3 +52,8 @@
 - https://github.com/huggingface/transformers.js
 - https://developers.google.com/search/docs/monitor-debug/search-operators/all-search-site?hl=ko
 - https://developers.google.com/custom-search/v1/overview
+
+## GitHub 배포 상태
+- 공식 저장소: https://github.com/kdc916/Price-Hunter
+- 2026-10-18 버전 파일 커밋 및 fetch_file 확인됨.
+- GitHub Pages 주소는 외부 웹 검증 실패로 아직 공개 배포 성공을 주장하지 않음. Pages 설정 `main/(root)` 점검 필요.
